@@ -36,6 +36,7 @@ func isSpecialKey(key string) bool {
 
 func initialModel() model {
 	m := model{
+		backlog:     loadTodos(backlogFile),
 		inProgress:  loadTodos(inProgressFile),
 		completed:   loadTodos(completedFile),
 		cursor:      0,
@@ -60,8 +61,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Text:      m.newTodo,
 						CreatedAt: time.Now(),
 					}
-					m.inProgress = append(m.inProgress, newTodo)
-					saveTodos(inProgressFile, m.inProgress)
+					if m.currentView == viewBacklog {
+						m.backlog = append(m.backlog, newTodo)
+						saveTodos(backlogFile, m.backlog)
+					} else {
+						m.inProgress = append(m.inProgress, newTodo)
+						saveTodos(inProgressFile, m.inProgress)
+					}
 					m.message = "Todo added!"
 				}
 				m.adding = false
@@ -95,10 +101,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				currentList := m.getCurrentList()
 				if len(currentList) > 0 && m.cursor < len(currentList) {
-					if m.currentView == viewInProgress {
+					switch m.currentView {
+					case viewBacklog:
+						m.backlog[m.cursor].Description = m.newDescription
+						saveTodos(backlogFile, m.backlog)
+					case viewInProgress:
 						m.inProgress[m.cursor].Description = m.newDescription
 						saveTodos(inProgressFile, m.inProgress)
-					} else {
+					case viewCompleted:
 						// Find and update in completed list
 						todoToUpdate := m.displayedCompleted[m.cursor]
 						for i, todo := range m.completed {
@@ -159,7 +169,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showingDescription = false
 
 		case "J":
-			if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress)-1 {
+			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor < len(m.backlog)-1 {
+				// Swap current item with the one below it
+				m.backlog[m.cursor], m.backlog[m.cursor+1] = m.backlog[m.cursor+1], m.backlog[m.cursor]
+				m.cursor++
+				saveTodos(backlogFile, m.backlog)
+				m.message = "Todo moved down"
+			} else if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress)-1 {
 				// Swap current item with the one below it
 				m.inProgress[m.cursor], m.inProgress[m.cursor+1] = m.inProgress[m.cursor+1], m.inProgress[m.cursor]
 				m.cursor++
@@ -168,7 +184,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "K":
-			if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor > 0 {
+			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor > 0 {
+				// Swap current item with the one above it
+				m.backlog[m.cursor], m.backlog[m.cursor-1] = m.backlog[m.cursor-1], m.backlog[m.cursor]
+				m.cursor--
+				saveTodos(backlogFile, m.backlog)
+				m.message = "Todo moved up"
+			} else if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor > 0 {
 				// Swap current item with the one above it
 				m.inProgress[m.cursor], m.inProgress[m.cursor-1] = m.inProgress[m.cursor-1], m.inProgress[m.cursor]
 				m.cursor--
@@ -177,7 +199,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "h":
-			if m.currentView == viewCompleted {
+			switch m.currentView {
+			case viewInProgress:
+				m.currentView = viewBacklog
+				m.cursor = 0
+				m.message = ""
+				m.showingDescription = false
+			case viewCompleted:
 				m.currentView = viewInProgress
 				m.cursor = 0
 				m.message = ""
@@ -185,7 +213,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "l":
-			if m.currentView == viewInProgress {
+			switch m.currentView {
+			case viewBacklog:
+				m.currentView = viewInProgress
+				m.cursor = 0
+				m.message = ""
+				m.showingDescription = false
+			case viewInProgress:
 				m.currentView = viewCompleted
 				m.updateDisplayedCompleted()
 				m.cursor = 0
@@ -194,7 +228,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a":
-			if m.currentView == viewInProgress {
+			if m.currentView == viewBacklog || m.currentView == viewInProgress {
 				m.adding = true
 				m.newTodo = ""
 				m.message = ""
@@ -202,22 +236,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "d":
 			// Check if there's a todo to delete
-			if m.currentView == viewInProgress {
-				if len(m.inProgress) > 0 && m.cursor < len(m.inProgress) {
-					m.confirmingDelete = true
-					m.message = ""
-				}
-			} else {
-				if len(m.displayedCompleted) > 0 && m.cursor < len(m.displayedCompleted) {
-					m.confirmingDelete = true
-					m.message = ""
-				}
+			currentList := m.getCurrentList()
+			if len(currentList) > 0 && m.cursor < len(currentList) {
+				m.confirmingDelete = true
+				m.message = ""
 			}
 
 		case "y":
 			if m.confirmingDelete {
 				// Proceed with deletion
-				if m.currentView == viewInProgress {
+				switch m.currentView {
+				case viewBacklog:
+					if len(m.backlog) > 0 && m.cursor < len(m.backlog) {
+						m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
+						if m.cursor >= len(m.backlog) && m.cursor > 0 {
+							m.cursor--
+						}
+						saveTodos(backlogFile, m.backlog)
+						m.message = "Todo deleted"
+					}
+				case viewInProgress:
 					if len(m.inProgress) > 0 && m.cursor < len(m.inProgress) {
 						m.inProgress = append(m.inProgress[:m.cursor], m.inProgress[m.cursor+1:]...)
 						if m.cursor >= len(m.inProgress) && m.cursor > 0 {
@@ -226,7 +264,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						saveTodos(inProgressFile, m.inProgress)
 						m.message = "Todo deleted"
 					}
-				} else {
+				case viewCompleted:
 					if len(m.displayedCompleted) > 0 && m.cursor < len(m.displayedCompleted) {
 						// Find and remove from the actual completed list
 						todoToDelete := m.displayedCompleted[m.cursor]
@@ -291,6 +329,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "Todo moved to in-progress!"
 			}
 
+		case "r":
+			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor < len(m.backlog) {
+				todo := m.backlog[m.cursor]
+				m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
+				m.inProgress = append(m.inProgress, todo)
+				if m.cursor >= len(m.backlog) && m.cursor > 0 {
+					m.cursor--
+				}
+				saveTodos(backlogFile, m.backlog)
+				saveTodos(inProgressFile, m.inProgress)
+				m.message = "Todo moved to in-progress!"
+			}
+
 		case "i":
 			currentList := m.getCurrentList()
 			if len(currentList) > 0 && m.cursor < len(currentList) {
@@ -316,10 +367,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) getCurrentList() []Todo {
-	if m.currentView == viewInProgress {
+	switch m.currentView {
+	case viewBacklog:
+		return m.backlog
+	case viewInProgress:
 		return m.inProgress
+	default:
+		return m.displayedCompleted
 	}
-	return m.displayedCompleted
 }
 
 func (m *model) updateDisplayedCompleted() {
@@ -353,10 +408,13 @@ func (m model) View() string {
 	s := strings.Builder{}
 	s.WriteString("\n")
 
-	if m.currentView == viewInProgress {
-		s.WriteString("  [IN PROGRESS]  Completed (l to switch)\n\n")
-	} else {
-		s.WriteString("  In Progress (h to switch)  [COMPLETED (10 most recent)]\n\n")
+	switch m.currentView {
+	case viewBacklog:
+		s.WriteString("  [BACKLOG]  In Progress (l to switch)  Completed\n\n")
+	case viewInProgress:
+		s.WriteString("  Backlog (h to switch)  [IN PROGRESS]  Completed (l to switch)\n\n")
+	case viewCompleted:
+		s.WriteString("  Backlog  In Progress (h to switch)  [COMPLETED (10 most recent)]\n\n")
 	}
 
 	currentList := m.getCurrentList()
@@ -404,8 +462,8 @@ func (m model) View() string {
 		s.WriteString("  Are you sure you want to delete this todo? (y/n)\n\n")
 	} else {
 		s.WriteString("  Commands:\n")
-		s.WriteString("  j/k: move down/up  J/K: reorder (in progress only)  h/l: switch views\n")
-		s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete\n")
+		s.WriteString("  j/k: move down/up  J/K: reorder (backlog/in progress)  h/l: switch views\n")
+		s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete  r: move to in progress\n")
 		s.WriteString("  i: toggle description  I: toggle all descriptions  e: edit description  q: quit\n\n")
 	}
 
