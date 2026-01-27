@@ -8,6 +8,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// Test file constants - separate from production files
+const (
+	testBacklogFile    = "test_todo_backlog.txt"
+	testInProgressFile = "test_todo_inprogress.txt"
+	testCompletedFile  = "test_todo_completed.txt"
+)
+
 func TestIsSpecialKey(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -637,24 +644,11 @@ func TestSwapTodos(t *testing.T) {
 }
 
 func TestInitialModel(t *testing.T) {
-	// Save the existing files
-	backupBacklog := backlogFile + ".bak"
-	backupInProgress := inProgressFile + ".bak"
-	backupCompleted := completedFile + ".bak"
-
-	// Backup existing files if they exist
-	_ = os.Rename(backlogFile, backupBacklog)
-	_ = os.Rename(inProgressFile, backupInProgress)
-	_ = os.Rename(completedFile, backupCompleted)
-
+	// Clean up test files at the end
 	defer func() {
-		// Restore original files
-		_ = os.Remove(backlogFile)
-		_ = os.Remove(inProgressFile)
-		_ = os.Remove(completedFile)
-		_ = os.Rename(backupBacklog, backlogFile)
-		_ = os.Rename(backupInProgress, inProgressFile)
-		_ = os.Rename(backupCompleted, completedFile)
+		_ = os.Remove(testBacklogFile)
+		_ = os.Remove(testInProgressFile)
+		_ = os.Remove(testCompletedFile)
 	}()
 
 	// Create test data
@@ -663,12 +657,19 @@ func TestInitialModel(t *testing.T) {
 	inProgressTodos := []Todo{{Text: "inprogress1", CreatedAt: now}}
 	completedTodos := []Todo{{Text: "completed1", CreatedAt: now, CompletedAt: &now}}
 
-	_ = saveTodos(backlogFile, backlogTodos)
-	_ = saveTodos(inProgressFile, inProgressTodos)
-	_ = saveTodos(completedFile, completedTodos)
+	_ = saveTodos(testBacklogFile, backlogTodos)
+	_ = saveTodos(testInProgressFile, inProgressTodos)
+	_ = saveTodos(testCompletedFile, completedTodos)
 
-	// Initialize model
-	m := initialModel()
+	// Manually construct model with test data (instead of using initialModel() which uses production files)
+	m := model{
+		backlog:     loadTodos(testBacklogFile),
+		inProgress:  loadTodos(testInProgressFile),
+		completed:   loadTodos(testCompletedFile),
+		cursor:      0,
+		currentView: viewInProgress,
+	}
+	m.updateDisplayedCompleted()
 
 	// Verify data loaded
 	if len(m.backlog) != 1 {
