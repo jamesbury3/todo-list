@@ -34,6 +34,8 @@ type model struct {
 	newTodo                string
 	editingDescription     bool
 	newDescription         string
+	renamingTodo           bool
+	newTodoName            string
 	showingDescription     bool
 	showingAllDescriptions bool
 	confirmingDelete       bool

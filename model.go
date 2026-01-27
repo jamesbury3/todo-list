@@ -149,6 +149,60 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		if m.renamingTodo {
+			switch msg.String() {
+			case "enter":
+				if strings.TrimSpace(m.newTodoName) != "" {
+					currentList := m.getCurrentList()
+					if len(currentList) > 0 && m.cursor < len(currentList) {
+						switch m.currentView {
+						case viewBacklog:
+							m.backlog[m.cursor].Text = m.newTodoName
+							saveTodos(backlogFile, m.backlog)
+						case viewInProgress:
+							m.inProgress[m.cursor].Text = m.newTodoName
+							saveTodos(inProgressFile, m.inProgress)
+						case viewCompleted:
+							// Find and update in completed list
+							todoToUpdate := m.displayedCompleted[m.cursor]
+							for i, todo := range m.completed {
+								if todo.Text == todoToUpdate.Text && todo.CreatedAt.Equal(todoToUpdate.CreatedAt) {
+									m.completed[i].Text = m.newTodoName
+									break
+								}
+							}
+							m.updateDisplayedCompleted()
+							saveTodos(completedFile, m.completed)
+						}
+						m.message = "Todo renamed!"
+					}
+				}
+				m.renamingTodo = false
+				m.newTodoName = ""
+			case "esc":
+				m.renamingTodo = false
+				m.newTodoName = ""
+				m.message = "Cancelled"
+			case "backspace":
+				if len(m.newTodoName) > 0 {
+					// Handle UTF-8 properly by converting to runes
+					runes := []rune(m.newTodoName)
+					m.newTodoName = string(runes[:len(runes)-1])
+				}
+			default:
+				// Filter out special keys but allow pasting and special characters
+				key := msg.String()
+				// Ignore control sequences and special keys
+				if !isSpecialKey(key) {
+					// Strip bracketed paste markers if present
+					key = strings.TrimPrefix(key, "[")
+					key = strings.TrimSuffix(key, "]")
+					m.newTodoName += key
+				}
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
@@ -289,6 +343,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.confirmingDelete {
 				m.confirmingDelete = false
 				m.message = "Deletion cancelled"
+			} else {
+				// Rename mode
+				currentList := m.getCurrentList()
+				if len(currentList) > 0 && m.cursor < len(currentList) {
+					m.renamingTodo = true
+					m.newTodoName = currentList[m.cursor].Text
+					m.message = ""
+				}
 			}
 
 		case "x":
@@ -458,13 +520,16 @@ func (m model) View() string {
 	} else if m.editingDescription {
 		s.WriteString("  Edit description: " + m.newDescription + "_\n")
 		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
+	} else if m.renamingTodo {
+		s.WriteString("  Rename todo: " + m.newTodoName + "_\n")
+		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
 	} else if m.confirmingDelete {
 		s.WriteString("  Are you sure you want to delete this todo? (y/n)\n\n")
 	} else {
 		s.WriteString("  Commands:\n")
 		s.WriteString("  j/k: move down/up  J/K: reorder (backlog/in progress)  h/l: switch views\n")
 		s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete  r: move to in progress\n")
-		s.WriteString("  i: toggle description  I: toggle all descriptions  e: edit description  q: quit\n\n")
+		s.WriteString("  i: toggle description  I: toggle all descriptions  e: edit description  n: rename  q: quit\n\n")
 	}
 
 	if m.message != "" {
