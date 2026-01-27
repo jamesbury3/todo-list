@@ -451,11 +451,11 @@ func (m model) View() string {
 
 	switch m.currentView {
 	case viewBacklog:
-		s.WriteString("  [BACKLOG]  In Progress (l to switch)  Completed\n\n")
+		s.WriteString("  [BACKLOG]  In Progress  Completed\n\n")
 	case viewInProgress:
-		s.WriteString("  Backlog (h to switch)  [IN PROGRESS]  Completed (l to switch)\n\n")
+		s.WriteString("  Backlog  [IN PROGRESS]  Completed\n\n")
 	case viewCompleted:
-		s.WriteString("  Backlog  In Progress (h to switch)  [COMPLETED (10 most recent)]\n\n")
+		s.WriteString("  Backlog  In Progress  [COMPLETED]\n\n")
 	}
 
 	currentList := m.getCurrentList()
