@@ -74,6 +74,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.message = ""
 
+		case "J":
+			if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress)-1 {
+				// Swap current item with the one below it
+				m.inProgress[m.cursor], m.inProgress[m.cursor+1] = m.inProgress[m.cursor+1], m.inProgress[m.cursor]
+				m.cursor++
+				saveTodos(inProgressFile, m.inProgress)
+				m.message = "Todo moved down"
+			}
+
+		case "K":
+			if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor > 0 {
+				// Swap current item with the one above it
+				m.inProgress[m.cursor], m.inProgress[m.cursor-1] = m.inProgress[m.cursor-1], m.inProgress[m.cursor]
+				m.cursor--
+				saveTodos(inProgressFile, m.inProgress)
+				m.message = "Todo moved up"
+			}
+
 		case "h":
 			if m.currentView == viewCompleted {
 				m.currentView = viewInProgress
@@ -242,8 +260,8 @@ func (m model) View() string {
 		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
 	} else {
 		s.WriteString("  Commands:\n")
-		s.WriteString("  j/k: move down/up  h/l: switch views  a: add  d: delete\n")
-		s.WriteString("  x: mark complete  u: undo complete  q: quit\n\n")
+		s.WriteString("  j/k: move down/up  J/K: reorder (in progress only)  h/l: switch views\n")
+		s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete  q: quit\n\n")
 	}
 
 	if m.message != "" {
