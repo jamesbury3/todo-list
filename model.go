@@ -9,6 +9,31 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+func isSpecialKey(key string) bool {
+	// Filter out special keys and control sequences that shouldn't be added to text input
+	specialKeys := []string{
+		"ctrl+c", "ctrl+d", "ctrl+z", "ctrl+a", "ctrl+e", "ctrl+k", "ctrl+u",
+		"up", "down", "left", "right",
+		"home", "end", "pgup", "pgdown",
+		"delete", "insert",
+		"f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
+		"alt+enter", "shift+enter",
+	}
+
+	for _, sk := range specialKeys {
+		if key == sk {
+			return true
+		}
+	}
+
+	// Filter out other control sequences (keys starting with ctrl+, alt+, etc.)
+	if strings.HasPrefix(key, "ctrl+") || strings.HasPrefix(key, "alt+") || strings.HasPrefix(key, "meta+") {
+		return true
+	}
+
+	return false
+}
+
 func initialModel() model {
 	m := model{
 		inProgress:  loadTodos(inProgressFile),
@@ -47,11 +72,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "Cancelled"
 			case "backspace":
 				if len(m.newTodo) > 0 {
-					m.newTodo = m.newTodo[:len(m.newTodo)-1]
+					// Handle UTF-8 properly by converting to runes
+					runes := []rune(m.newTodo)
+					m.newTodo = string(runes[:len(runes)-1])
 				}
 			default:
-				if len(msg.String()) == 1 {
-					m.newTodo += msg.String()
+				// Filter out special keys but allow pasting and special characters
+				key := msg.String()
+				// Ignore control sequences and special keys
+				if !isSpecialKey(key) {
+					// Strip bracketed paste markers if present
+					key = strings.TrimPrefix(key, "[")
+					key = strings.TrimSuffix(key, "]")
+					m.newTodo += key
 				}
 			}
 			return m, nil
@@ -88,11 +121,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "Cancelled"
 			case "backspace":
 				if len(m.newDescription) > 0 {
-					m.newDescription = m.newDescription[:len(m.newDescription)-1]
+					// Handle UTF-8 properly by converting to runes
+					runes := []rune(m.newDescription)
+					m.newDescription = string(runes[:len(runes)-1])
 				}
 			default:
-				if len(msg.String()) == 1 {
-					m.newDescription += msg.String()
+				// Filter out special keys but allow pasting and special characters
+				key := msg.String()
+				// Ignore control sequences and special keys
+				if !isSpecialKey(key) {
+					// Strip bracketed paste markers if present
+					key = strings.TrimPrefix(key, "[")
+					key = strings.TrimSuffix(key, "]")
+					m.newDescription += key
 				}
 			}
 			return m, nil
