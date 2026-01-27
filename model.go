@@ -34,6 +34,47 @@ func isSpecialKey(key string) bool {
 	return false
 }
 
+// handleTextInput processes keyboard input for text entry fields
+func handleTextInput(key string, currentText *string) bool {
+	switch key {
+	case "backspace":
+		if len(*currentText) > 0 {
+			runes := []rune(*currentText)
+			*currentText = string(runes[:len(runes)-1])
+		}
+		return true
+	default:
+		if !isSpecialKey(key) {
+			// Strip bracketed paste markers if present
+			key = strings.TrimPrefix(key, "[")
+			key = strings.TrimSuffix(key, "]")
+			*currentText += key
+		}
+		return true
+	}
+}
+
+// updateCompletedTodo finds and updates a todo in the completed list
+func (m *model) updateCompletedTodo(updateFn func(*Todo)) {
+	if m.cursor >= len(m.displayedCompleted) {
+		return
+	}
+	todoToUpdate := m.displayedCompleted[m.cursor]
+	for i := range m.completed {
+		if m.completed[i].Text == todoToUpdate.Text && m.completed[i].CreatedAt.Equal(todoToUpdate.CreatedAt) {
+			updateFn(&m.completed[i])
+			break
+		}
+	}
+	m.updateDisplayedCompleted()
+}
+
+// swapTodos swaps two adjacent items in a list and saves
+func swapTodos(list []Todo, idx1, idx2 int, filename string) {
+	list[idx1], list[idx2] = list[idx2], list[idx1]
+	saveTodos(filename, list)
+}
+
 func initialModel() model {
 	m := model{
 		backlog:     loadTodos(backlogFile),
@@ -76,22 +117,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.adding = false
 				m.newTodo = ""
 				m.message = "Cancelled"
-			case "backspace":
-				if len(m.newTodo) > 0 {
-					// Handle UTF-8 properly by converting to runes
-					runes := []rune(m.newTodo)
-					m.newTodo = string(runes[:len(runes)-1])
-				}
 			default:
-				// Filter out special keys but allow pasting and special characters
-				key := msg.String()
-				// Ignore control sequences and special keys
-				if !isSpecialKey(key) {
-					// Strip bracketed paste markers if present
-					key = strings.TrimPrefix(key, "[")
-					key = strings.TrimSuffix(key, "]")
-					m.newTodo += key
-				}
+				handleTextInput(msg.String(), &m.newTodo)
 			}
 			return m, nil
 		}
@@ -109,15 +136,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.inProgress[m.cursor].Description = m.newDescription
 						saveTodos(inProgressFile, m.inProgress)
 					case viewCompleted:
-						// Find and update in completed list
-						todoToUpdate := m.displayedCompleted[m.cursor]
-						for i, todo := range m.completed {
-							if todo.Text == todoToUpdate.Text && todo.CreatedAt.Equal(todoToUpdate.CreatedAt) {
-								m.completed[i].Description = m.newDescription
-								break
-							}
-						}
-						m.updateDisplayedCompleted()
+						m.updateCompletedTodo(func(t *Todo) {
+							t.Description = m.newDescription
+						})
 						saveTodos(completedFile, m.completed)
 					}
 					m.message = "Description updated!"
@@ -129,22 +150,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editingDescription = false
 				m.newDescription = ""
 				m.message = "Cancelled"
-			case "backspace":
-				if len(m.newDescription) > 0 {
-					// Handle UTF-8 properly by converting to runes
-					runes := []rune(m.newDescription)
-					m.newDescription = string(runes[:len(runes)-1])
-				}
 			default:
-				// Filter out special keys but allow pasting and special characters
-				key := msg.String()
-				// Ignore control sequences and special keys
-				if !isSpecialKey(key) {
-					// Strip bracketed paste markers if present
-					key = strings.TrimPrefix(key, "[")
-					key = strings.TrimSuffix(key, "]")
-					m.newDescription += key
-				}
+				handleTextInput(msg.String(), &m.newDescription)
 			}
 			return m, nil
 		}
@@ -163,15 +170,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.inProgress[m.cursor].Text = m.newTodoName
 							saveTodos(inProgressFile, m.inProgress)
 						case viewCompleted:
-							// Find and update in completed list
-							todoToUpdate := m.displayedCompleted[m.cursor]
-							for i, todo := range m.completed {
-								if todo.Text == todoToUpdate.Text && todo.CreatedAt.Equal(todoToUpdate.CreatedAt) {
-									m.completed[i].Text = m.newTodoName
-									break
-								}
-							}
-							m.updateDisplayedCompleted()
+							m.updateCompletedTodo(func(t *Todo) {
+								t.Text = m.newTodoName
+							})
 							saveTodos(completedFile, m.completed)
 						}
 						m.message = "Todo renamed!"
@@ -183,22 +184,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.renamingTodo = false
 				m.newTodoName = ""
 				m.message = "Cancelled"
-			case "backspace":
-				if len(m.newTodoName) > 0 {
-					// Handle UTF-8 properly by converting to runes
-					runes := []rune(m.newTodoName)
-					m.newTodoName = string(runes[:len(runes)-1])
-				}
 			default:
-				// Filter out special keys but allow pasting and special characters
-				key := msg.String()
-				// Ignore control sequences and special keys
-				if !isSpecialKey(key) {
-					// Strip bracketed paste markers if present
-					key = strings.TrimPrefix(key, "[")
-					key = strings.TrimSuffix(key, "]")
-					m.newTodoName += key
-				}
+				handleTextInput(msg.String(), &m.newTodoName)
 			}
 			return m, nil
 		}
@@ -224,31 +211,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "J":
 			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor < len(m.backlog)-1 {
-				// Swap current item with the one below it
-				m.backlog[m.cursor], m.backlog[m.cursor+1] = m.backlog[m.cursor+1], m.backlog[m.cursor]
+				swapTodos(m.backlog, m.cursor, m.cursor+1, backlogFile)
 				m.cursor++
-				saveTodos(backlogFile, m.backlog)
 				m.message = "Todo moved down"
 			} else if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress)-1 {
-				// Swap current item with the one below it
-				m.inProgress[m.cursor], m.inProgress[m.cursor+1] = m.inProgress[m.cursor+1], m.inProgress[m.cursor]
+				swapTodos(m.inProgress, m.cursor, m.cursor+1, inProgressFile)
 				m.cursor++
-				saveTodos(inProgressFile, m.inProgress)
 				m.message = "Todo moved down"
 			}
 
 		case "K":
 			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor > 0 {
-				// Swap current item with the one above it
-				m.backlog[m.cursor], m.backlog[m.cursor-1] = m.backlog[m.cursor-1], m.backlog[m.cursor]
+				swapTodos(m.backlog, m.cursor, m.cursor-1, backlogFile)
 				m.cursor--
-				saveTodos(backlogFile, m.backlog)
 				m.message = "Todo moved up"
 			} else if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor > 0 {
-				// Swap current item with the one above it
-				m.inProgress[m.cursor], m.inProgress[m.cursor-1] = m.inProgress[m.cursor-1], m.inProgress[m.cursor]
+				swapTodos(m.inProgress, m.cursor, m.cursor-1, inProgressFile)
 				m.cursor--
-				saveTodos(inProgressFile, m.inProgress)
 				m.message = "Todo moved up"
 			}
 
