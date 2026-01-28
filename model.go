@@ -12,11 +12,12 @@ import (
 
 func isSpecialKey(key string) bool {
 	// Filter out special keys and control sequences that shouldn't be added to text input
+	// Note: left, right, home, end, delete are handled by handleTextInput and are not filtered
 	specialKeys := []string{
-		"ctrl+c", "ctrl+d", "ctrl+z", "ctrl+a", "ctrl+e", "ctrl+k", "ctrl+u",
-		"up", "down", "left", "right",
-		"home", "end", "pgup", "pgdown",
-		"delete", "insert",
+		"ctrl+c", "ctrl+d", "ctrl+z", "ctrl+k", "ctrl+u",
+		"up", "down",
+		"pgup", "pgdown",
+		"insert",
 		"f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
 		"alt+enter", "shift+enter",
 	}
@@ -28,6 +29,10 @@ func isSpecialKey(key string) bool {
 	}
 
 	// Filter out other control sequences (keys starting with ctrl+, alt+, etc.)
+	// except ctrl+a and ctrl+e which are handled for home/end navigation
+	if key == "ctrl+a" || key == "ctrl+e" {
+		return false
+	}
 	if strings.HasPrefix(key, "ctrl+") || strings.HasPrefix(key, "alt+") || strings.HasPrefix(key, "meta+") {
 		return true
 	}
@@ -35,13 +40,47 @@ func isSpecialKey(key string) bool {
 	return false
 }
 
-// handleTextInput processes keyboard input for text entry fields
-func handleTextInput(key string, currentText *string) bool {
+// handleTextInput processes keyboard input for text entry fields with cursor support
+func handleTextInput(key string, currentText *string, cursorPos *int) bool {
+	runes := []rune(*currentText)
+	textLen := len(runes)
+
+	// Ensure cursor position is within bounds
+	if *cursorPos < 0 {
+		*cursorPos = 0
+	}
+	if *cursorPos > textLen {
+		*cursorPos = textLen
+	}
+
 	switch key {
+	case "left":
+		if *cursorPos > 0 {
+			*cursorPos--
+		}
+		return true
+	case "right":
+		if *cursorPos < textLen {
+			*cursorPos++
+		}
+		return true
+	case "home", "ctrl+a":
+		*cursorPos = 0
+		return true
+	case "end", "ctrl+e":
+		*cursorPos = textLen
+		return true
 	case "backspace":
-		if len(*currentText) > 0 {
-			runes := []rune(*currentText)
-			*currentText = string(runes[:len(runes)-1])
+		if *cursorPos > 0 {
+			runes = append(runes[:*cursorPos-1], runes[*cursorPos:]...)
+			*currentText = string(runes)
+			*cursorPos--
+		}
+		return true
+	case "delete":
+		if *cursorPos < textLen {
+			runes = append(runes[:*cursorPos], runes[*cursorPos+1:]...)
+			*currentText = string(runes)
 		}
 		return true
 	default:
@@ -49,7 +88,11 @@ func handleTextInput(key string, currentText *string) bool {
 			// Strip bracketed paste markers if present
 			key = strings.TrimPrefix(key, "[")
 			key = strings.TrimSuffix(key, "]")
-			*currentText += key
+			// Insert at cursor position
+			keyRunes := []rune(key)
+			runes = append(runes[:*cursorPos], append(keyRunes, runes[*cursorPos:]...)...)
+			*currentText = string(runes)
+			*cursorPos += len(keyRunes)
 		}
 		return true
 	}
@@ -119,7 +162,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.newTodo = ""
 				m.message = "Cancelled"
 			default:
-				handleTextInput(msg.String(), &m.newTodo)
+				handleTextInput(msg.String(), &m.newTodo, &m.textInputCursor)
 			}
 			return m, nil
 		}
@@ -152,7 +195,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.newDescription = ""
 				m.message = "Cancelled"
 			default:
-				handleTextInput(msg.String(), &m.newDescription)
+				handleTextInput(msg.String(), &m.newDescription, &m.textInputCursor)
 			}
 			return m, nil
 		}
@@ -186,7 +229,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.newTodoName = ""
 				m.message = "Cancelled"
 			default:
-				handleTextInput(msg.String(), &m.newTodoName)
+				handleTextInput(msg.String(), &m.newTodoName, &m.textInputCursor)
 			}
 			return m, nil
 		}
@@ -265,6 +308,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentView == viewBacklog || m.currentView == viewInProgress {
 				m.adding = true
 				m.newTodo = ""
+				m.textInputCursor = 0
 				m.message = ""
 			}
 
@@ -329,6 +373,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(currentList) > 0 && m.cursor < len(currentList) {
 					m.renamingTodo = true
 					m.newTodoName = currentList[m.cursor].Text
+					m.textInputCursor = len([]rune(m.newTodoName))
 					m.message = ""
 				}
 			}
@@ -429,6 +474,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(currentList) > 0 && m.cursor < len(currentList) {
 				m.editingDescription = true
 				m.newDescription = currentList[m.cursor].Description
+				m.textInputCursor = len([]rune(m.newDescription))
 				m.message = ""
 			}
 		}
@@ -446,6 +492,18 @@ func (m *model) getCurrentList() []Todo {
 	default:
 		return m.displayedCompleted
 	}
+}
+
+// renderTextWithCursor inserts a cursor indicator at the specified position
+func renderTextWithCursor(text string, cursorPos int) string {
+	runes := []rune(text)
+	if cursorPos < 0 {
+		cursorPos = 0
+	}
+	if cursorPos > len(runes) {
+		cursorPos = len(runes)
+	}
+	return string(runes[:cursorPos]) + "│" + string(runes[cursorPos:])
 }
 
 func (m *model) updateDisplayedCompleted() {
@@ -524,14 +582,14 @@ func (m model) View() string {
 	s.WriteString("\n")
 
 	if m.adding {
-		s.WriteString("  Add new todo: " + m.newTodo + "_\n")
-		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
+		s.WriteString("  Add new todo: " + renderTextWithCursor(m.newTodo, m.textInputCursor) + "\n")
+		s.WriteString("  (press Enter to save, Esc to cancel, arrows to navigate)\n\n")
 	} else if m.editingDescription {
-		s.WriteString("  Edit description: " + m.newDescription + "_\n")
-		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
+		s.WriteString("  Edit description: " + renderTextWithCursor(m.newDescription, m.textInputCursor) + "\n")
+		s.WriteString("  (press Enter to save, Esc to cancel, arrows to navigate)\n\n")
 	} else if m.renamingTodo {
-		s.WriteString("  Rename todo: " + m.newTodoName + "_\n")
-		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
+		s.WriteString("  Rename todo: " + renderTextWithCursor(m.newTodoName, m.textInputCursor) + "\n")
+		s.WriteString("  (press Enter to save, Esc to cancel, arrows to navigate)\n\n")
 	} else if m.confirmingDelete {
 		s.WriteString("  Are you sure you want to delete this todo? (y/n)\n\n")
 	} else {

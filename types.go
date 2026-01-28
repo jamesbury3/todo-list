@@ -40,4 +40,5 @@ type model struct {
 	showingAllDescriptions bool
 	confirmingDelete       bool
 	message                string
+	textInputCursor        int // Cursor position within text input fields (for arrow key navigation)
 }
