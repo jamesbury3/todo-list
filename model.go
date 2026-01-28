@@ -567,6 +567,51 @@ func renderColoredTextWithCursor(text string, cursorPos int) string {
 	return beforeCursor + cursor + afterCursor
 }
 
+// renderWrappedTextWithCursor renders wrapped text with a cursor, returning multiple lines
+func renderWrappedTextWithCursor(text string, cursorPos int, maxWidth int) []string {
+	if maxWidth <= 0 {
+		return []string{renderColoredTextWithCursor(text, cursorPos)}
+	}
+
+	runes := []rune(text)
+	if cursorPos < 0 {
+		cursorPos = 0
+	}
+	if cursorPos > len(runes) {
+		cursorPos = len(runes)
+	}
+
+	// Wrap the text first
+	wrappedLines := wrapText(text, maxWidth)
+	if len(wrappedLines) == 0 {
+		return []string{inputCursorStyle.Render("│")}
+	}
+
+	// Find which line contains the cursor
+	var result []string
+	charCount := 0
+	for _, line := range wrappedLines {
+		lineRunes := []rune(line)
+		lineLen := len(lineRunes)
+
+		if cursorPos >= charCount && cursorPos <= charCount+lineLen {
+			// Cursor is in this line
+			localCursorPos := cursorPos - charCount
+			beforeCursor := todoTextStyle.Render(string(lineRunes[:localCursorPos]))
+			cursor := inputCursorStyle.Render("│")
+			afterCursor := todoTextStyle.Render(string(lineRunes[localCursorPos:]))
+			result = append(result, beforeCursor+cursor+afterCursor)
+		} else {
+			// No cursor in this line
+			result = append(result, todoTextStyle.Render(line))
+		}
+
+		charCount += lineLen
+	}
+
+	return result
+}
+
 func (m *model) updateDisplayedCompleted() {
 	if len(m.completed) == 0 {
 		m.displayedCompleted = []Todo{}
@@ -625,6 +670,54 @@ func truncateString(s string, maxLen int) string {
 	return string(runes[:maxLen-1]) + "…"
 }
 
+// wrapText wraps text to fit within maxWidth, breaking at word boundaries when possible
+func wrapText(text string, maxWidth int) []string {
+	if maxWidth <= 0 {
+		return []string{text}
+	}
+
+	runes := []rune(text)
+	if len(runes) <= maxWidth {
+		return []string{text}
+	}
+
+	var lines []string
+	var currentLine []rune
+	var currentWord []rune
+
+	for i, r := range runes {
+		currentWord = append(currentWord, r)
+
+		// Check if we hit a space or end of text
+		isSpace := r == ' ' || r == '\t'
+		isEnd := i == len(runes)-1
+
+		if isSpace || isEnd {
+			// Would adding this word exceed the width?
+			testLine := append(currentLine, currentWord...)
+
+			if len(testLine) > maxWidth && len(currentLine) > 0 {
+				// Save current line and start new one with the word
+				lines = append(lines, string(currentLine))
+				currentLine = currentWord
+			} else {
+				// Add word to current line
+				currentLine = testLine
+			}
+
+			// Reset word buffer
+			currentWord = []rune{}
+		}
+	}
+
+	// Add any remaining content
+	if len(currentLine) > 0 {
+		lines = append(lines, string(currentLine))
+	}
+
+	return lines
+}
+
 func (m model) View() string {
 	s := strings.Builder{}
 
@@ -674,33 +767,52 @@ func (m model) View() string {
 				indicator = " 📄"
 			}
 
-			// Truncate todo text if needed
-			displayText := todo.Text
-			if maxTextWidth > 10 && len([]rune(displayText)) > maxTextWidth {
-				displayText = truncateString(displayText, maxTextWidth)
-			}
+			// Wrap todo text if needed
+			wrappedLines := wrapText(todo.Text, maxTextWidth)
 
 			// Format the display based on view
+			var timestamp string
 			if m.currentView == viewCompleted && todo.CompletedAt != nil {
 				completedTime := todo.CompletedAt.Format("Jan 2, 15:04")
-				todoText := todoTextStyle.Render(displayText + indicator)
-				timestamp := timestampStyle.Render("[" + completedTime + "]")
-				s.WriteString(fmt.Sprintf("  %s %s %s\n", cursor, todoText, timestamp))
+				timestamp = timestampStyle.Render("[" + completedTime + "]")
 			} else {
 				createdTime := todo.CreatedAt.Format("Jan 2, 15:04")
-				todoText := todoTextStyle.Render(displayText + indicator)
-				timestamp := timestampStyle.Render("[" + createdTime + "]")
+				timestamp = timestampStyle.Render("[" + createdTime + "]")
+			}
+
+			// Render first line with cursor and timestamp
+			if len(wrappedLines) > 0 {
+				firstLine := wrappedLines[0]
+				// Add indicator to the first line
+				if len(wrappedLines) == 1 {
+					firstLine += indicator
+				}
+				todoText := todoTextStyle.Render(firstLine)
 				s.WriteString(fmt.Sprintf("  %s %s %s\n", cursor, todoText, timestamp))
+
+				// Render additional wrapped lines with proper indentation
+				for j := 1; j < len(wrappedLines); j++ {
+					line := wrappedLines[j]
+					// Add indicator to the last line
+					if j == len(wrappedLines)-1 {
+						line += indicator
+					}
+					todoText := todoTextStyle.Render(line)
+					s.WriteString(fmt.Sprintf("     %s\n", todoText))
+				}
 			}
 
 			// Show description if toggled and cursor is on this todo, or if showing all descriptions
 			if todo.Description != "" && ((m.showingDescription && i == m.cursor) || m.showingAllDescriptions) {
-				// Truncate description if needed
-				descText := todo.Description
-				if maxTextWidth > 15 && len([]rune(descText)) > maxTextWidth-5 {
-					descText = truncateString(descText, maxTextWidth-5)
+				// Wrap description text
+				descLines := wrapText(todo.Description, maxTextWidth-5)
+				for j, descLine := range descLines {
+					if j == 0 {
+						s.WriteString("     " + descriptionStyle.Render("└─ "+descLine) + "\n")
+					} else {
+						s.WriteString("     " + descriptionStyle.Render("   "+descLine) + "\n")
+					}
 				}
-				s.WriteString("     " + descriptionStyle.Render("└─ "+descText) + "\n")
 			}
 		}
 	}
@@ -708,31 +820,31 @@ func (m model) View() string {
 	s.WriteString("\n")
 
 	if m.adding {
-		// Truncate input text display if too wide
-		displayInput := m.newTodo
+		// Wrap input text display if too wide
 		inputMaxWidth := maxTextWidth + 10 // Slightly more space for input
-		if inputMaxWidth > 10 && len([]rune(displayInput)) > inputMaxWidth {
-			displayInput = truncateString(displayInput, inputMaxWidth)
+		wrappedLines := renderWrappedTextWithCursor(m.newTodo, m.textInputCursor, inputMaxWidth)
+		s.WriteString("  " + promptStyle.Render("Add new todo:") + " " + wrappedLines[0] + "\n")
+		for i := 1; i < len(wrappedLines); i++ {
+			s.WriteString("                " + wrappedLines[i] + "\n")
 		}
-		s.WriteString("  " + promptStyle.Render("Add new todo:") + " " + renderColoredTextWithCursor(displayInput, m.textInputCursor) + "\n")
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.editingDescription {
-		// Truncate input text display if too wide
-		displayInput := m.newDescription
+		// Wrap input text display if too wide
 		inputMaxWidth := maxTextWidth + 10
-		if inputMaxWidth > 10 && len([]rune(displayInput)) > inputMaxWidth {
-			displayInput = truncateString(displayInput, inputMaxWidth)
+		wrappedLines := renderWrappedTextWithCursor(m.newDescription, m.textInputCursor, inputMaxWidth)
+		s.WriteString("  " + promptStyle.Render("Edit description:") + " " + wrappedLines[0] + "\n")
+		for i := 1; i < len(wrappedLines); i++ {
+			s.WriteString("                   " + wrappedLines[i] + "\n")
 		}
-		s.WriteString("  " + promptStyle.Render("Edit description:") + " " + renderColoredTextWithCursor(displayInput, m.textInputCursor) + "\n")
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.renamingTodo {
-		// Truncate input text display if too wide
-		displayInput := m.newTodoName
+		// Wrap input text display if too wide
 		inputMaxWidth := maxTextWidth + 10
-		if inputMaxWidth > 10 && len([]rune(displayInput)) > inputMaxWidth {
-			displayInput = truncateString(displayInput, inputMaxWidth)
+		wrappedLines := renderWrappedTextWithCursor(m.newTodoName, m.textInputCursor, inputMaxWidth)
+		s.WriteString("  " + promptStyle.Render("Rename todo:") + " " + wrappedLines[0] + "\n")
+		for i := 1; i < len(wrappedLines); i++ {
+			s.WriteString("              " + wrappedLines[i] + "\n")
 		}
-		s.WriteString("  " + promptStyle.Render("Rename todo:") + " " + renderColoredTextWithCursor(displayInput, m.textInputCursor) + "\n")
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.confirmingDelete {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this todo? (y/n)") + "\n\n")
