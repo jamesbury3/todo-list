@@ -544,6 +544,24 @@ func (m *model) updateDisplayedCompleted() {
 	}
 }
 
+// countCompletedToday returns the number of todos completed today
+func (m *model) countCompletedToday() int {
+	today := time.Now()
+	todayYear, todayMonth, todayDay := today.Date()
+	count := 0
+
+	for _, todo := range m.completed {
+		if todo.CompletedAt != nil {
+			completedYear, completedMonth, completedDay := todo.CompletedAt.Date()
+			if todayYear == completedYear && todayMonth == completedMonth && todayDay == completedDay {
+				count++
+			}
+		}
+	}
+
+	return count
+}
+
 func (m model) View() string {
 	s := strings.Builder{}
 	s.WriteString("\n")
@@ -556,6 +574,10 @@ func (m model) View() string {
 	case viewCompleted:
 		s.WriteString("  Backlog  In Progress  [COMPLETED]\n\n")
 	}
+
+	// Display count of todos completed today
+	completedToday := m.countCompletedToday()
+	s.WriteString(fmt.Sprintf("  Completed today: %d\n\n", completedToday))
 
 	currentList := m.getCurrentList()
 
