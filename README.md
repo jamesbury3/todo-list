@@ -1,4 +1,4 @@
-# TTodo List TUI
+# Todo List TUI
 
 ### Introduction
 
