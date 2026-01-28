@@ -10,9 +10,9 @@ import (
 
 // Test file constants - separate from production files
 const (
-	testBacklogFile    = "test_todo_backlog.txt"
-	testInProgressFile = "test_todo_inprogress.txt"
-	testCompletedFile  = "test_todo_completed.txt"
+	testBacklogFile   = "test_todo_backlog.txt"
+	testReadyFile     = "test_todo_ready.txt"
+	testCompletedFile = "test_todo_completed.txt"
 )
 
 func TestIsSpecialKey(t *testing.T) {
@@ -109,8 +109,8 @@ func TestGetCurrentList(t *testing.T) {
 		backlog: []Todo{
 			{Text: "backlog1", CreatedAt: time.Now()},
 		},
-		inProgress: []Todo{
-			{Text: "inprogress1", CreatedAt: time.Now()},
+		ready: []Todo{
+			{Text: "ready1", CreatedAt: time.Now()},
 		},
 		displayedCompleted: []Todo{
 			{Text: "completed1", CreatedAt: time.Now()},
@@ -124,7 +124,7 @@ func TestGetCurrentList(t *testing.T) {
 		expectedText string
 	}{
 		{"backlog view", viewBacklog, 1, "backlog1"},
-		{"in progress view", viewInProgress, 1, "inprogress1"},
+		{"ready view", viewReady, 1, "ready1"},
 		{"completed view", viewCompleted, 1, "completed1"},
 	}
 
@@ -315,7 +315,7 @@ func TestUpdateCursorNavigation(t *testing.T) {
 
 func TestUpdateViewSwitching(t *testing.T) {
 	m := model{
-		currentView: viewInProgress,
+		currentView: viewReady,
 		cursor:      5,
 	}
 
@@ -323,24 +323,24 @@ func TestUpdateViewSwitching(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	m = updated.(model)
 	if m.currentView != viewBacklog {
-		t.Errorf("currentView after 'h' from InProgress = %v, want %v", m.currentView, viewBacklog)
+		t.Errorf("currentView after 'h' from Ready = %v, want %v", m.currentView, viewBacklog)
 	}
 	if m.cursor != 0 {
 		t.Errorf("cursor after view switch = %d, want 0", m.cursor)
 	}
 
-	// Switch right to in progress
+	// Switch right to ready
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
 	m = updated.(model)
-	if m.currentView != viewInProgress {
-		t.Errorf("currentView after 'l' from Backlog = %v, want %v", m.currentView, viewInProgress)
+	if m.currentView != viewReady {
+		t.Errorf("currentView after 'l' from Backlog = %v, want %v", m.currentView, viewReady)
 	}
 
 	// Switch right to completed
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
 	m = updated.(model)
 	if m.currentView != viewCompleted {
-		t.Errorf("currentView after 'l' from InProgress = %v, want %v", m.currentView, viewCompleted)
+		t.Errorf("currentView after 'l' from Ready = %v, want %v", m.currentView, viewCompleted)
 	}
 
 	// Try to switch right from completed (should stay at completed)
@@ -350,11 +350,11 @@ func TestUpdateViewSwitching(t *testing.T) {
 		t.Errorf("currentView after 'l' from Completed = %v, want %v", m.currentView, viewCompleted)
 	}
 
-	// Switch left to in progress
+	// Switch left to ready
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	m = updated.(model)
-	if m.currentView != viewInProgress {
-		t.Errorf("currentView after 'h' from Completed = %v, want %v", m.currentView, viewInProgress)
+	if m.currentView != viewReady {
+		t.Errorf("currentView after 'h' from Completed = %v, want %v", m.currentView, viewReady)
 	}
 }
 
@@ -669,27 +669,27 @@ func TestInitialModel(t *testing.T) {
 	// Clean up test files at the end
 	defer func() {
 		_ = os.Remove(testBacklogFile)
-		_ = os.Remove(testInProgressFile)
+		_ = os.Remove(testReadyFile)
 		_ = os.Remove(testCompletedFile)
 	}()
 
 	// Create test data
 	now := time.Now()
 	backlogTodos := []Todo{{Text: "backlog1", CreatedAt: now}}
-	inProgressTodos := []Todo{{Text: "inprogress1", CreatedAt: now}}
+	readyTodos := []Todo{{Text: "ready1", CreatedAt: now}}
 	completedTodos := []Todo{{Text: "completed1", CreatedAt: now, CompletedAt: &now}}
 
 	_ = saveTodos(testBacklogFile, backlogTodos)
-	_ = saveTodos(testInProgressFile, inProgressTodos)
+	_ = saveTodos(testReadyFile, readyTodos)
 	_ = saveTodos(testCompletedFile, completedTodos)
 
 	// Manually construct model with test data (instead of using initialModel() which uses production files)
 	m := model{
 		backlog:     loadTodos(testBacklogFile),
-		inProgress:  loadTodos(testInProgressFile),
+		ready:       loadTodos(testReadyFile),
 		completed:   loadTodos(testCompletedFile),
 		cursor:      0,
-		currentView: viewInProgress,
+		currentView: viewReady,
 	}
 	m.updateDisplayedCompleted()
 
@@ -697,50 +697,50 @@ func TestInitialModel(t *testing.T) {
 	if len(m.backlog) != 1 {
 		t.Errorf("backlog length = %d, want 1", len(m.backlog))
 	}
-	if len(m.inProgress) != 1 {
-		t.Errorf("inProgress length = %d, want 1", len(m.inProgress))
+	if len(m.ready) != 1 {
+		t.Errorf("ready length = %d, want 1", len(m.ready))
 	}
 	if len(m.completed) != 1 {
 		t.Errorf("completed length = %d, want 1", len(m.completed))
 	}
-	if m.currentView != viewInProgress {
-		t.Errorf("currentView = %v, want %v", m.currentView, viewInProgress)
+	if m.currentView != viewReady {
+		t.Errorf("currentView = %v, want %v", m.currentView, viewReady)
 	}
 	if m.cursor != 0 {
 		t.Errorf("cursor = %d, want 0", m.cursor)
 	}
 }
 
-func TestUpdateMoveBacklogToInProgress(t *testing.T) {
+func TestUpdateMoveBacklogToReady(t *testing.T) {
 	m := model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
 		},
-		inProgress: []Todo{},
-		cursor:     0,
+		ready:  []Todo{},
+		cursor: 0,
 	}
 
-	// Press 'r' to move to in progress
+	// Press 'r' to move to ready
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
 	m = updated.(model)
 
 	if len(m.backlog) != 0 {
 		t.Errorf("backlog length after move = %d, want 0", len(m.backlog))
 	}
-	if len(m.inProgress) != 1 {
-		t.Errorf("inProgress length after move = %d, want 1", len(m.inProgress))
+	if len(m.ready) != 1 {
+		t.Errorf("ready length after move = %d, want 1", len(m.ready))
 	}
-	if m.inProgress[0].Text != "task1" {
-		t.Errorf("inProgress[0].Text = %q, want 'task1'", m.inProgress[0].Text)
+	if m.ready[0].Text != "task1" {
+		t.Errorf("ready[0].Text = %q, want 'task1'", m.ready[0].Text)
 	}
 }
 
 func TestUpdateMarkComplete(t *testing.T) {
 	m := model{
-		currentView: viewInProgress,
+		currentView: viewReady,
 		backlog:     []Todo{},
-		inProgress: []Todo{
+		ready: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
 		},
 		completed: []Todo{},
@@ -751,8 +751,8 @@ func TestUpdateMarkComplete(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 	m = updated.(model)
 
-	if len(m.inProgress) != 0 {
-		t.Errorf("inProgress length after complete = %d, want 0", len(m.inProgress))
+	if len(m.ready) != 0 {
+		t.Errorf("ready length after complete = %d, want 0", len(m.ready))
 	}
 	if len(m.completed) != 1 {
 		t.Errorf("completed length after complete = %d, want 1", len(m.completed))
@@ -770,7 +770,7 @@ func TestUpdateUndoComplete(t *testing.T) {
 	m := model{
 		currentView: viewCompleted,
 		backlog:     []Todo{},
-		inProgress:  []Todo{},
+		ready:       []Todo{},
 		completed: []Todo{
 			{Text: "task1", CreatedAt: now, CompletedAt: &now},
 		},
@@ -785,13 +785,13 @@ func TestUpdateUndoComplete(t *testing.T) {
 	if len(m.completed) != 0 {
 		t.Errorf("completed length after undo = %d, want 0", len(m.completed))
 	}
-	if len(m.inProgress) != 1 {
-		t.Errorf("inProgress length after undo = %d, want 1", len(m.inProgress))
+	if len(m.ready) != 1 {
+		t.Errorf("ready length after undo = %d, want 1", len(m.ready))
 	}
-	if m.inProgress[0].Text != "task1" {
-		t.Errorf("inProgress[0].Text = %q, want 'task1'", m.inProgress[0].Text)
+	if m.ready[0].Text != "task1" {
+		t.Errorf("ready[0].Text = %q, want 'task1'", m.ready[0].Text)
 	}
-	if m.inProgress[0].CompletedAt != nil {
+	if m.ready[0].CompletedAt != nil {
 		t.Error("CompletedAt should be cleared")
 	}
 }

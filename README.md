@@ -19,7 +19,7 @@ go build .
 
 ### Usage
 
-The todo list is split into 3 pages: Backlog, In Progress, and Completed. Each of these has slightly different commands, but navigation is common throughout.
+The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of these has slightly different commands, but navigation is common throughout.
 
 **Common**
 - `j`/`k` - Navigate down/up
@@ -33,10 +33,10 @@ The todo list is split into 3 pages: Backlog, In Progress, and Completed. Each o
 
 **Backlog**
 - `a` - Add new todo
-- `r` - Move to in progress
+- `r` - Move to ready
 - `J`/`K` - Reorder todos
 
-**In Progress**
+**Ready**
 - `a` - Add new todo
 - `b` - Move to backlog
 - `x` - Mark as complete

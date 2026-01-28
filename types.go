@@ -3,16 +3,16 @@ package main
 import "time"
 
 const (
-	backlogFile    = "todo_backlog.txt"
-	inProgressFile = "todo_inprogress.txt"
-	completedFile  = "todo_completed.txt"
+	backlogFile   = "todo_backlog.txt"
+	readyFile     = "todo_ready.txt"
+	completedFile = "todo_completed.txt"
 )
 
 type view int
 
 const (
 	viewBacklog view = iota
-	viewInProgress
+	viewReady
 	viewCompleted
 )
 
@@ -25,7 +25,7 @@ type Todo struct {
 
 type model struct {
 	backlog                []Todo
-	inProgress             []Todo
+	ready                  []Todo
 	completed              []Todo
 	displayedCompleted     []Todo // Stores the filtered/sorted completed todos for display
 	cursor                 int

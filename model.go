@@ -163,10 +163,10 @@ func swapTodos(list []Todo, idx1, idx2 int, filename string) {
 func initialModel() model {
 	m := model{
 		backlog:     loadTodos(backlogFile),
-		inProgress:  loadTodos(inProgressFile),
+		ready:       loadTodos(readyFile),
 		completed:   loadTodos(completedFile),
 		cursor:      0,
-		currentView: viewInProgress,
+		currentView: viewReady,
 	}
 	m.updateDisplayedCompleted()
 	return m
@@ -191,8 +191,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.backlog = append(m.backlog, newTodo)
 						saveTodos(backlogFile, m.backlog)
 					} else {
-						m.inProgress = append(m.inProgress, newTodo)
-						saveTodos(inProgressFile, m.inProgress)
+						m.ready = append(m.ready, newTodo)
+						saveTodos(readyFile, m.ready)
 					}
 					m.message = "Todo added!"
 				}
@@ -217,9 +217,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case viewBacklog:
 						m.backlog[m.cursor].Description = m.newDescription
 						saveTodos(backlogFile, m.backlog)
-					case viewInProgress:
-						m.inProgress[m.cursor].Description = m.newDescription
-						saveTodos(inProgressFile, m.inProgress)
+					case viewReady:
+						m.ready[m.cursor].Description = m.newDescription
+						saveTodos(readyFile, m.ready)
 					case viewCompleted:
 						m.updateCompletedTodo(func(t *Todo) {
 							t.Description = m.newDescription
@@ -252,9 +252,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						case viewBacklog:
 							m.backlog[m.cursor].Text = capitalizedName
 							saveTodos(backlogFile, m.backlog)
-						case viewInProgress:
-							m.inProgress[m.cursor].Text = capitalizedName
-							saveTodos(inProgressFile, m.inProgress)
+						case viewReady:
+							m.ready[m.cursor].Text = capitalizedName
+							saveTodos(readyFile, m.ready)
 						case viewCompleted:
 							m.updateCompletedTodo(func(t *Todo) {
 								t.Text = capitalizedName
@@ -300,8 +300,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				swapTodos(m.backlog, m.cursor, m.cursor+1, backlogFile)
 				m.cursor++
 				m.message = "Todo moved down"
-			} else if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress)-1 {
-				swapTodos(m.inProgress, m.cursor, m.cursor+1, inProgressFile)
+			} else if m.currentView == viewReady && len(m.ready) > 0 && m.cursor < len(m.ready)-1 {
+				swapTodos(m.ready, m.cursor, m.cursor+1, readyFile)
 				m.cursor++
 				m.message = "Todo moved down"
 			}
@@ -311,21 +311,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				swapTodos(m.backlog, m.cursor, m.cursor-1, backlogFile)
 				m.cursor--
 				m.message = "Todo moved up"
-			} else if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor > 0 {
-				swapTodos(m.inProgress, m.cursor, m.cursor-1, inProgressFile)
+			} else if m.currentView == viewReady && len(m.ready) > 0 && m.cursor > 0 {
+				swapTodos(m.ready, m.cursor, m.cursor-1, readyFile)
 				m.cursor--
 				m.message = "Todo moved up"
 			}
 
 		case "h":
 			switch m.currentView {
-			case viewInProgress:
+			case viewReady:
 				m.currentView = viewBacklog
 				m.cursor = 0
 				m.message = ""
 				m.showingDescription = false
 			case viewCompleted:
-				m.currentView = viewInProgress
+				m.currentView = viewReady
 				m.cursor = 0
 				m.message = ""
 				m.showingDescription = false
@@ -334,11 +334,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "l":
 			switch m.currentView {
 			case viewBacklog:
-				m.currentView = viewInProgress
+				m.currentView = viewReady
 				m.cursor = 0
 				m.message = ""
 				m.showingDescription = false
-			case viewInProgress:
+			case viewReady:
 				m.currentView = viewCompleted
 				m.updateDisplayedCompleted()
 				m.cursor = 0
@@ -347,7 +347,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a":
-			if m.currentView == viewBacklog || m.currentView == viewInProgress {
+			if m.currentView == viewBacklog || m.currentView == viewReady {
 				m.adding = true
 				m.newTodo = ""
 				m.textInputCursor = 0
@@ -375,13 +375,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						saveTodos(backlogFile, m.backlog)
 						m.message = "Todo deleted"
 					}
-				case viewInProgress:
-					if len(m.inProgress) > 0 && m.cursor < len(m.inProgress) {
-						m.inProgress = append(m.inProgress[:m.cursor], m.inProgress[m.cursor+1:]...)
-						if m.cursor >= len(m.inProgress) && m.cursor > 0 {
+				case viewReady:
+					if len(m.ready) > 0 && m.cursor < len(m.ready) {
+						m.ready = append(m.ready[:m.cursor], m.ready[m.cursor+1:]...)
+						if m.cursor >= len(m.ready) && m.cursor > 0 {
 							m.cursor--
 						}
-						saveTodos(inProgressFile, m.inProgress)
+						saveTodos(readyFile, m.ready)
 						m.message = "Todo deleted"
 					}
 				case viewCompleted:
@@ -421,17 +421,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "x":
-			if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress) {
-				todo := m.inProgress[m.cursor]
+			if m.currentView == viewReady && len(m.ready) > 0 && m.cursor < len(m.ready) {
+				todo := m.ready[m.cursor]
 				now := time.Now()
 				todo.CompletedAt = &now
-				m.inProgress = append(m.inProgress[:m.cursor], m.inProgress[m.cursor+1:]...)
+				m.ready = append(m.ready[:m.cursor], m.ready[m.cursor+1:]...)
 				m.completed = append(m.completed, todo)
 				m.updateDisplayedCompleted()
-				if m.cursor >= len(m.inProgress) && m.cursor > 0 {
+				if m.cursor >= len(m.ready) && m.cursor > 0 {
 					m.cursor--
 				}
-				saveTodos(inProgressFile, m.inProgress)
+				saveTodos(readyFile, m.ready)
 				saveTodos(completedFile, m.completed)
 				m.message = "Todo completed!"
 			}
@@ -445,7 +445,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Clear the completion timestamp
 						todoToUndo.CompletedAt = nil
 						m.completed = append(m.completed[:i], m.completed[i+1:]...)
-						m.inProgress = append(m.inProgress, todoToUndo)
+						m.ready = append(m.ready, todoToUndo)
 						break
 					}
 				}
@@ -453,9 +453,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= len(m.displayedCompleted) && m.cursor > 0 {
 					m.cursor--
 				}
-				saveTodos(inProgressFile, m.inProgress)
+				saveTodos(readyFile, m.ready)
 				saveTodos(completedFile, m.completed)
-				m.message = "Todo moved to in-progress!"
+				m.message = "Todo moved to ready!"
 			}
 
 		case "B":
@@ -478,24 +478,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor < len(m.backlog) {
 				todo := m.backlog[m.cursor]
 				m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
-				m.inProgress = append(m.inProgress, todo)
+				m.ready = append(m.ready, todo)
 				if m.cursor >= len(m.backlog) && m.cursor > 0 {
 					m.cursor--
 				}
 				saveTodos(backlogFile, m.backlog)
-				saveTodos(inProgressFile, m.inProgress)
-				m.message = "Todo moved to in-progress!"
+				saveTodos(readyFile, m.ready)
+				m.message = "Todo moved to ready!"
 			}
 
 		case "b":
-			if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress) {
-				todo := m.inProgress[m.cursor]
-				m.inProgress = append(m.inProgress[:m.cursor], m.inProgress[m.cursor+1:]...)
+			if m.currentView == viewReady && len(m.ready) > 0 && m.cursor < len(m.ready) {
+				todo := m.ready[m.cursor]
+				m.ready = append(m.ready[:m.cursor], m.ready[m.cursor+1:]...)
 				m.backlog = append(m.backlog, todo)
-				if m.cursor >= len(m.inProgress) && m.cursor > 0 {
+				if m.cursor >= len(m.ready) && m.cursor > 0 {
 					m.cursor--
 				}
-				saveTodos(inProgressFile, m.inProgress)
+				saveTodos(readyFile, m.ready)
 				saveTodos(backlogFile, m.backlog)
 				m.message = "Todo moved to backlog!"
 			}
@@ -529,8 +529,8 @@ func (m *model) getCurrentList() []Todo {
 	switch m.currentView {
 	case viewBacklog:
 		return m.backlog
-	case viewInProgress:
-		return m.inProgress
+	case viewReady:
+		return m.ready
 	default:
 		return m.displayedCompleted
 	}
@@ -614,16 +614,16 @@ func (m model) View() string {
 
 	// Render view tabs with colors
 	backlogTab := "BACKLOG"
-	inProgressTab := "IN PROGRESS"
+	readyTab := "READY"
 	completedTab := "COMPLETED"
 
 	switch m.currentView {
 	case viewBacklog:
-		s.WriteString("  " + activeTabStyle.Render(backlogTab) + "  " + inactiveTabStyle.Render(inProgressTab) + "  " + inactiveTabStyle.Render(completedTab) + "\n\n")
-	case viewInProgress:
-		s.WriteString("  " + inactiveTabStyle.Render(backlogTab) + "  " + activeTabStyle.Render(inProgressTab) + "  " + inactiveTabStyle.Render(completedTab) + "\n\n")
+		s.WriteString("  " + activeTabStyle.Render(backlogTab) + "  " + inactiveTabStyle.Render(readyTab) + "  " + inactiveTabStyle.Render(completedTab) + "\n\n")
+	case viewReady:
+		s.WriteString("  " + inactiveTabStyle.Render(backlogTab) + "  " + activeTabStyle.Render(readyTab) + "  " + inactiveTabStyle.Render(completedTab) + "\n\n")
 	case viewCompleted:
-		s.WriteString("  " + inactiveTabStyle.Render(backlogTab) + "  " + inactiveTabStyle.Render(inProgressTab) + "  " + activeTabStyle.Render(completedTab) + "\n\n")
+		s.WriteString("  " + inactiveTabStyle.Render(backlogTab) + "  " + inactiveTabStyle.Render(readyTab) + "  " + activeTabStyle.Render(completedTab) + "\n\n")
 	}
 
 	// Display count of todos completed today
@@ -682,13 +682,13 @@ func (m model) View() string {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this todo? (y/n)") + "\n\n")
 	} else {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
-		s.WriteString("  " + commandStyle.Render("j/k: move down/up  J/K: reorder (backlog/in progress)  h/l: switch views") + "\n")
+		s.WriteString("  " + commandStyle.Render("j/k: move down/up  J/K: reorder (backlog/ready)  h/l: switch views") + "\n")
 		if m.currentView == viewCompleted {
 			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  B: backup and clear completed") + "\n")
-		} else if m.currentView == viewInProgress {
+		} else if m.currentView == viewReady {
 			s.WriteString("  " + commandStyle.Render("a: add  d: delete  x: mark complete  b: move to backlog") + "\n")
 		} else if m.currentView == viewBacklog {
-			s.WriteString("  " + commandStyle.Render("a: add  d: delete  r: move to in progress") + "\n")
+			s.WriteString("  " + commandStyle.Render("a: add  d: delete  r: move to ready") + "\n")
 		} else {
 			log.Fatalf("Invalid view: %v", m.currentView)
 		}
