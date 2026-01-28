@@ -890,7 +890,7 @@ func TestUpdateSaveNewTodo(t *testing.T) {
 	if len(m.backlog) != 1 {
 		t.Errorf("backlog length after save = %d, want 1", len(m.backlog))
 	}
-	if m.backlog[0].Text != "new task" {
+	if m.backlog[0].Text != "New task" {
 		t.Errorf("backlog[0].Text = %q, want 'new task'", m.backlog[0].Text)
 	}
 	if m.adding {
@@ -942,7 +942,7 @@ func TestUpdateSaveRename(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(model)
 
-	if m.backlog[0].Text != "new name" {
+	if m.backlog[0].Text != "New name" {
 		t.Errorf("backlog[0].Text = %q, want 'new name'", m.backlog[0].Text)
 	}
 	if m.renamingTodo {

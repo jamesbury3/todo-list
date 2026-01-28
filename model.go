@@ -40,6 +40,16 @@ func isSpecialKey(key string) bool {
 	return false
 }
 
+// capitalizeFirst capitalizes the first letter of a string
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
+	return string(runes)
+}
+
 // handleTextInput processes keyboard input for text entry fields with cursor support
 func handleTextInput(key string, currentText *string, cursorPos *int) bool {
 	runes := []rune(*currentText)
@@ -143,7 +153,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				if strings.TrimSpace(m.newTodo) != "" {
 					newTodo := Todo{
-						Text:      m.newTodo,
+						Text:      capitalizeFirst(m.newTodo),
 						CreatedAt: time.Now(),
 					}
 					if m.currentView == viewBacklog {
@@ -206,16 +216,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if strings.TrimSpace(m.newTodoName) != "" {
 					currentList := m.getCurrentList()
 					if len(currentList) > 0 && m.cursor < len(currentList) {
+						capitalizedName := capitalizeFirst(m.newTodoName)
 						switch m.currentView {
 						case viewBacklog:
-							m.backlog[m.cursor].Text = m.newTodoName
+							m.backlog[m.cursor].Text = capitalizedName
 							saveTodos(backlogFile, m.backlog)
 						case viewInProgress:
-							m.inProgress[m.cursor].Text = m.newTodoName
+							m.inProgress[m.cursor].Text = capitalizedName
 							saveTodos(inProgressFile, m.inProgress)
 						case viewCompleted:
 							m.updateCompletedTodo(func(t *Todo) {
-								t.Text = m.newTodoName
+								t.Text = capitalizedName
 							})
 							saveTodos(completedFile, m.completed)
 						}
