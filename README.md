@@ -14,7 +14,7 @@ This is a terminal-based todo list application built for keyboard navigation wit
 ```
 go build .
 ```
-4. Move the binary to the folder where you want to save your todo list.
+4. Move the binary to the folder where you want to save your todo list
 5. Run the binary and you're done!
 
 ### Usage
