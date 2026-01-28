@@ -41,4 +41,6 @@ type model struct {
 	confirmingDelete       bool
 	message                string
 	textInputCursor        int // Cursor position within text input fields (for arrow key navigation)
+	width                  int // Terminal width
+	height                 int // Terminal height
 }

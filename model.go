@@ -178,6 +178,10 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
 	case tea.KeyMsg:
 		if m.adding {
 			switch msg.String() {
@@ -608,9 +612,32 @@ func (m *model) countCompletedToday() int {
 	return count
 }
 
+// truncateString truncates a string to maxLen, accounting for ANSI escape codes
+func truncateString(s string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	// Count visible runes (excluding ANSI codes)
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen-1]) + "…"
+}
+
 func (m model) View() string {
 	s := strings.Builder{}
-	s.WriteString("\n")
+
+	// Use alternate screen buffer approach: render content without leading newline
+	// to prevent shifting when terminal resizes
+
+	// Calculate available width for content (accounting for padding and margins)
+	availableWidth := m.width
+	if availableWidth <= 0 {
+		availableWidth = 80 // Default width if not set yet
+	}
+	// Reserve space for padding, cursor, etc. (roughly 10 chars per line)
+	maxTextWidth := availableWidth - 35 // Account for "  > ", timestamp, indicators
 
 	// Render view tabs with colors
 	backlogTab := "BACKLOG"
@@ -647,22 +674,33 @@ func (m model) View() string {
 				indicator = " 📄"
 			}
 
+			// Truncate todo text if needed
+			displayText := todo.Text
+			if maxTextWidth > 10 && len([]rune(displayText)) > maxTextWidth {
+				displayText = truncateString(displayText, maxTextWidth)
+			}
+
 			// Format the display based on view
 			if m.currentView == viewCompleted && todo.CompletedAt != nil {
 				completedTime := todo.CompletedAt.Format("Jan 2, 15:04")
-				todoText := todoTextStyle.Render(todo.Text + indicator)
+				todoText := todoTextStyle.Render(displayText + indicator)
 				timestamp := timestampStyle.Render("[" + completedTime + "]")
 				s.WriteString(fmt.Sprintf("  %s %s %s\n", cursor, todoText, timestamp))
 			} else {
 				createdTime := todo.CreatedAt.Format("Jan 2, 15:04")
-				todoText := todoTextStyle.Render(todo.Text + indicator)
+				todoText := todoTextStyle.Render(displayText + indicator)
 				timestamp := timestampStyle.Render("[" + createdTime + "]")
 				s.WriteString(fmt.Sprintf("  %s %s %s\n", cursor, todoText, timestamp))
 			}
 
 			// Show description if toggled and cursor is on this todo, or if showing all descriptions
 			if todo.Description != "" && ((m.showingDescription && i == m.cursor) || m.showingAllDescriptions) {
-				s.WriteString("     " + descriptionStyle.Render("└─ "+todo.Description) + "\n")
+				// Truncate description if needed
+				descText := todo.Description
+				if maxTextWidth > 15 && len([]rune(descText)) > maxTextWidth-5 {
+					descText = truncateString(descText, maxTextWidth-5)
+				}
+				s.WriteString("     " + descriptionStyle.Render("└─ "+descText) + "\n")
 			}
 		}
 	}
@@ -670,13 +708,31 @@ func (m model) View() string {
 	s.WriteString("\n")
 
 	if m.adding {
-		s.WriteString("  " + promptStyle.Render("Add new todo:") + " " + renderColoredTextWithCursor(m.newTodo, m.textInputCursor) + "\n")
+		// Truncate input text display if too wide
+		displayInput := m.newTodo
+		inputMaxWidth := maxTextWidth + 10 // Slightly more space for input
+		if inputMaxWidth > 10 && len([]rune(displayInput)) > inputMaxWidth {
+			displayInput = truncateString(displayInput, inputMaxWidth)
+		}
+		s.WriteString("  " + promptStyle.Render("Add new todo:") + " " + renderColoredTextWithCursor(displayInput, m.textInputCursor) + "\n")
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.editingDescription {
-		s.WriteString("  " + promptStyle.Render("Edit description:") + " " + renderColoredTextWithCursor(m.newDescription, m.textInputCursor) + "\n")
+		// Truncate input text display if too wide
+		displayInput := m.newDescription
+		inputMaxWidth := maxTextWidth + 10
+		if inputMaxWidth > 10 && len([]rune(displayInput)) > inputMaxWidth {
+			displayInput = truncateString(displayInput, inputMaxWidth)
+		}
+		s.WriteString("  " + promptStyle.Render("Edit description:") + " " + renderColoredTextWithCursor(displayInput, m.textInputCursor) + "\n")
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.renamingTodo {
-		s.WriteString("  " + promptStyle.Render("Rename todo:") + " " + renderColoredTextWithCursor(m.newTodoName, m.textInputCursor) + "\n")
+		// Truncate input text display if too wide
+		displayInput := m.newTodoName
+		inputMaxWidth := maxTextWidth + 10
+		if inputMaxWidth > 10 && len([]rune(displayInput)) > inputMaxWidth {
+			displayInput = truncateString(displayInput, inputMaxWidth)
+		}
+		s.WriteString("  " + promptStyle.Render("Rename todo:") + " " + renderColoredTextWithCursor(displayInput, m.textInputCursor) + "\n")
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.confirmingDelete {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this todo? (y/n)") + "\n\n")
