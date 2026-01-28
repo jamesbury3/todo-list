@@ -1,0 +1,5 @@
+*.txt
+todo-list
+.idea/*
+coverage.out
+CLAUDE.md
