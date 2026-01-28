@@ -8,6 +8,37 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// Color styles
+var (
+	// View tabs
+	activeTabStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("117")).Background(lipgloss.Color("236")).Padding(0, 1)
+	inactiveTabStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Padding(0, 1)
+
+	// Cursor and items
+	cursorStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("81")).Bold(true)
+	todoTextStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
+	timestampStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+	descriptionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Italic(true)
+
+	// Headers and sections
+	headerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("75")).Bold(true)
+	countStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Bold(true)
+
+	// Input prompts
+	promptStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Bold(true)
+	inputCursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("81")).Bold(true)
+	helpTextStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Italic(true)
+
+	// Messages
+	successMessageStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Bold(true)
+	errorMessageStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("203")).Bold(true)
+	infoMessageStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("117"))
+
+	// Commands
+	commandStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
 )
 
 func isSpecialKey(key string) bool {
@@ -517,6 +548,21 @@ func renderTextWithCursor(text string, cursorPos int) string {
 	return string(runes[:cursorPos]) + "│" + string(runes[cursorPos:])
 }
 
+// renderColoredTextWithCursor renders text with a colored cursor at the specified position
+func renderColoredTextWithCursor(text string, cursorPos int) string {
+	runes := []rune(text)
+	if cursorPos < 0 {
+		cursorPos = 0
+	}
+	if cursorPos > len(runes) {
+		cursorPos = len(runes)
+	}
+	beforeCursor := todoTextStyle.Render(string(runes[:cursorPos]))
+	cursor := inputCursorStyle.Render("│")
+	afterCursor := todoTextStyle.Render(string(runes[cursorPos:]))
+	return beforeCursor + cursor + afterCursor
+}
+
 func (m *model) updateDisplayedCompleted() {
 	if len(m.completed) == 0 {
 		m.displayedCompleted = []Todo{}
@@ -566,28 +612,33 @@ func (m model) View() string {
 	s := strings.Builder{}
 	s.WriteString("\n")
 
+	// Render view tabs with colors
+	backlogTab := "BACKLOG"
+	inProgressTab := "IN PROGRESS"
+	completedTab := "COMPLETED"
+
 	switch m.currentView {
 	case viewBacklog:
-		s.WriteString("  [BACKLOG]  In Progress  Completed\n\n")
+		s.WriteString("  " + activeTabStyle.Render(backlogTab) + "  " + inactiveTabStyle.Render(inProgressTab) + "  " + inactiveTabStyle.Render(completedTab) + "\n\n")
 	case viewInProgress:
-		s.WriteString("  Backlog  [IN PROGRESS]  Completed\n\n")
+		s.WriteString("  " + inactiveTabStyle.Render(backlogTab) + "  " + activeTabStyle.Render(inProgressTab) + "  " + inactiveTabStyle.Render(completedTab) + "\n\n")
 	case viewCompleted:
-		s.WriteString("  Backlog  In Progress  [COMPLETED]\n\n")
+		s.WriteString("  " + inactiveTabStyle.Render(backlogTab) + "  " + inactiveTabStyle.Render(inProgressTab) + "  " + activeTabStyle.Render(completedTab) + "\n\n")
 	}
 
 	// Display count of todos completed today
 	completedToday := m.countCompletedToday()
-	s.WriteString(fmt.Sprintf("  Completed today: %d\n\n", completedToday))
+	s.WriteString("  " + headerStyle.Render("Completed today:") + " " + countStyle.Render(fmt.Sprintf("%d", completedToday)) + "\n\n")
 
 	currentList := m.getCurrentList()
 
 	if len(currentList) == 0 {
-		s.WriteString("  No todos\n")
+		s.WriteString("  " + infoMessageStyle.Render("No todos") + "\n")
 	} else {
 		for i, todo := range currentList {
 			cursor := " "
 			if i == m.cursor {
-				cursor = ">"
+				cursor = cursorStyle.Render(">")
 			}
 
 			// Add description indicator
@@ -599,15 +650,19 @@ func (m model) View() string {
 			// Format the display based on view
 			if m.currentView == viewCompleted && todo.CompletedAt != nil {
 				completedTime := todo.CompletedAt.Format("Jan 2, 15:04")
-				s.WriteString(fmt.Sprintf("  %s %s%s [%s]\n", cursor, todo.Text, indicator, completedTime))
+				todoText := todoTextStyle.Render(todo.Text + indicator)
+				timestamp := timestampStyle.Render("[" + completedTime + "]")
+				s.WriteString(fmt.Sprintf("  %s %s %s\n", cursor, todoText, timestamp))
 			} else {
 				createdTime := todo.CreatedAt.Format("Jan 2, 15:04")
-				s.WriteString(fmt.Sprintf("  %s %s%s [%s]\n", cursor, todo.Text, indicator, createdTime))
+				todoText := todoTextStyle.Render(todo.Text + indicator)
+				timestamp := timestampStyle.Render("[" + createdTime + "]")
+				s.WriteString(fmt.Sprintf("  %s %s %s\n", cursor, todoText, timestamp))
 			}
 
 			// Show description if toggled and cursor is on this todo, or if showing all descriptions
 			if todo.Description != "" && ((m.showingDescription && i == m.cursor) || m.showingAllDescriptions) {
-				s.WriteString(fmt.Sprintf("     └─ %s\n", todo.Description))
+				s.WriteString("     " + descriptionStyle.Render("└─ "+todo.Description) + "\n")
 			}
 		}
 	}
@@ -615,33 +670,47 @@ func (m model) View() string {
 	s.WriteString("\n")
 
 	if m.adding {
-		s.WriteString("  Add new todo: " + renderTextWithCursor(m.newTodo, m.textInputCursor) + "\n")
-		s.WriteString("  (press Enter to save, Esc to cancel, arrows to navigate)\n\n")
+		s.WriteString("  " + promptStyle.Render("Add new todo:") + " " + renderColoredTextWithCursor(m.newTodo, m.textInputCursor) + "\n")
+		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.editingDescription {
-		s.WriteString("  Edit description: " + renderTextWithCursor(m.newDescription, m.textInputCursor) + "\n")
-		s.WriteString("  (press Enter to save, Esc to cancel, arrows to navigate)\n\n")
+		s.WriteString("  " + promptStyle.Render("Edit description:") + " " + renderColoredTextWithCursor(m.newDescription, m.textInputCursor) + "\n")
+		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.renamingTodo {
-		s.WriteString("  Rename todo: " + renderTextWithCursor(m.newTodoName, m.textInputCursor) + "\n")
-		s.WriteString("  (press Enter to save, Esc to cancel, arrows to navigate)\n\n")
+		s.WriteString("  " + promptStyle.Render("Rename todo:") + " " + renderColoredTextWithCursor(m.newTodoName, m.textInputCursor) + "\n")
+		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.confirmingDelete {
-		s.WriteString("  Are you sure you want to delete this todo? (y/n)\n\n")
+		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this todo? (y/n)") + "\n\n")
 	} else {
-		s.WriteString("  Commands:\n")
-		s.WriteString("  j/k: move down/up  J/K: reorder (backlog/in progress)  h/l: switch views\n")
+		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
+		s.WriteString("  " + commandStyle.Render("j/k: move down/up  J/K: reorder (backlog/in progress)  h/l: switch views") + "\n")
 		if m.currentView == viewCompleted {
-			s.WriteString("  d: delete  u: undo complete  B: backup and clear completed\n")
+			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  B: backup and clear completed") + "\n")
 		} else if m.currentView == viewInProgress {
-			s.WriteString("  a: add  d: delete  x: mark complete  b: move to backlog\n")
+			s.WriteString("  " + commandStyle.Render("a: add  d: delete  x: mark complete  b: move to backlog") + "\n")
 		} else if m.currentView == viewBacklog {
-			s.WriteString("  a: add  d: delete  r: move to in progress\n")
+			s.WriteString("  " + commandStyle.Render("a: add  d: delete  r: move to in progress") + "\n")
 		} else {
 			log.Fatalf("Invalid view: %v", m.currentView)
 		}
-		s.WriteString("  i: toggle description  I: toggle all descriptions  e: edit description  n: rename  q: quit\n\n")
+		s.WriteString("  " + commandStyle.Render("i: toggle description  I: toggle all descriptions  e: edit description  n: rename  q: quit") + "\n\n")
 	}
 
 	if m.message != "" {
-		s.WriteString("  " + m.message + "\n")
+		// Determine message style based on content
+		msgStyle := infoMessageStyle
+		if strings.Contains(strings.ToLower(m.message), "added") ||
+			strings.Contains(strings.ToLower(m.message), "completed") ||
+			strings.Contains(strings.ToLower(m.message), "moved") ||
+			strings.Contains(strings.ToLower(m.message), "updated") ||
+			strings.Contains(strings.ToLower(m.message), "renamed") ||
+			strings.Contains(strings.ToLower(m.message), "backed up") {
+			msgStyle = successMessageStyle
+		} else if strings.Contains(strings.ToLower(m.message), "cancelled") ||
+			strings.Contains(strings.ToLower(m.message), "failed") ||
+			strings.Contains(strings.ToLower(m.message), "error") {
+			msgStyle = errorMessageStyle
+		}
+		s.WriteString("  " + msgStyle.Render(m.message) + "\n")
 	}
 
 	return s.String()
