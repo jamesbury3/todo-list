@@ -371,7 +371,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "Todo moved to in-progress!"
 			}
 
-		case "b":
+		case "B":
 			if m.currentView == viewCompleted && len(m.completed) > 0 {
 				// Backup all completed todos
 				backupFile, err := backupCompletedTodos(m.completed)
@@ -398,6 +398,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				saveTodos(backlogFile, m.backlog)
 				saveTodos(inProgressFile, m.inProgress)
 				m.message = "Todo moved to in-progress!"
+			}
+
+		case "b":
+			if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress) {
+				todo := m.inProgress[m.cursor]
+				m.inProgress = append(m.inProgress[:m.cursor], m.inProgress[m.cursor+1:]...)
+				m.backlog = append(m.backlog, todo)
+				if m.cursor >= len(m.inProgress) && m.cursor > 0 {
+					m.cursor--
+				}
+				saveTodos(inProgressFile, m.inProgress)
+				saveTodos(backlogFile, m.backlog)
+				m.message = "Todo moved to backlog!"
 			}
 
 		case "i":
@@ -525,9 +538,9 @@ func (m model) View() string {
 		s.WriteString("  Commands:\n")
 		s.WriteString("  j/k: move down/up  J/K: reorder (backlog/in progress)  h/l: switch views\n")
 		if m.currentView == viewCompleted {
-			s.WriteString("  d: delete  u: undo complete  b: backup and clear completed\n")
+			s.WriteString("  d: delete  u: undo complete  B: backup and clear completed\n")
 		} else if m.currentView == viewInProgress {
-			s.WriteString("  a: add  d: delete  x: mark complete\n")
+			s.WriteString("  a: add  d: delete  x: mark complete  b: move to backlog\n")
 		} else if m.currentView == viewBacklog {
 			s.WriteString("  a: add  d: delete  r: move to in progress\n")
 		} else {
