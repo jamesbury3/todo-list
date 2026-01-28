@@ -251,11 +251,11 @@ func TestUpdateCompletedTodo(t *testing.T) {
 
 	// Update the first todo
 	m.updateCompletedTodo(func(t *Todo) {
-		t.Description = "updated description"
+		t.Description = []string{"updated description"}
 	})
 
-	if m.completed[0].Description != "updated description" {
-		t.Errorf("updateCompletedTodo() did not update description, got %q", m.completed[0].Description)
+	if len(m.completed[0].Description) != 1 || m.completed[0].Description[0] != "updated description" {
+		t.Errorf("updateCompletedTodo() did not update description, got %v", m.completed[0].Description)
 	}
 }
 
@@ -504,7 +504,7 @@ func TestUpdateToggleDescription(t *testing.T) {
 	m := model{
 		currentView: viewBacklog,
 		backlog: []Todo{
-			{Text: "task1", Description: "desc1", CreatedAt: time.Now()},
+			{Text: "task1", Description: []string{"desc1"}, CreatedAt: time.Now()},
 		},
 		cursor:             0,
 		showingDescription: false,
@@ -552,7 +552,7 @@ func TestViewRendering(t *testing.T) {
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: now},
-			{Text: "task2", Description: "has description", CreatedAt: now},
+			{Text: "task2", Description: []string{"has description"}, CreatedAt: now},
 		},
 		cursor: 0,
 	}
@@ -572,8 +572,8 @@ func TestViewRendering(t *testing.T) {
 	if !contains(view, "📄") {
 		t.Error("View should contain description indicator")
 	}
-	if !contains(view, "Commands:") {
-		t.Error("View should contain commands help")
+	if !contains(view, "Press ? for help") {
+		t.Error("View should contain help prompt")
 	}
 }
 
@@ -916,8 +916,8 @@ func TestUpdateSaveDescription(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(model)
 
-	if m.backlog[0].Description != "new description" {
-		t.Errorf("backlog[0].Description = %q, want 'new description'", m.backlog[0].Description)
+	if len(m.backlog[0].Description) != 1 || m.backlog[0].Description[0] != "new description" {
+		t.Errorf("backlog[0].Description = %v, want ['new description']", m.backlog[0].Description)
 	}
 	if m.editingDescription {
 		t.Error("editingDescription should be false after save")

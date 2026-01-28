@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 const (
 	backlogFile   = "todo_backlog.txt"
@@ -18,9 +21,40 @@ const (
 
 type Todo struct {
 	Text        string     `json:"text"`
-	Description string     `json:"description,omitempty"`
+	Description []string   `json:"description,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
+// UnmarshalJSON provides backward compatibility for loading old single-string descriptions
+func (t *Todo) UnmarshalJSON(data []byte) error {
+	type Alias Todo
+	aux := &struct {
+		Description interface{} `json:"description,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Handle description field - can be string (old format) or []string (new format)
+	switch desc := aux.Description.(type) {
+	case string:
+		if desc != "" {
+			t.Description = []string{desc}
+		}
+	case []interface{}:
+		for _, v := range desc {
+			if s, ok := v.(string); ok {
+				t.Description = append(t.Description, s)
+			}
+		}
+	}
+
+	return nil
 }
 
 type model struct {
@@ -40,6 +74,9 @@ type model struct {
 	showingAllDescriptions bool
 	showingCommands        bool
 	confirmingDelete       bool
+	navigatingDescriptions bool // True when in description navigation mode
+	descriptionCursor      int  // Which description is selected (0-indexed)
+	confirmingDeleteDesc   bool // True when confirming description deletion
 	message                string
 	textInputCursor        int // Cursor position within text input fields (for arrow key navigation)
 	width                  int // Terminal width
