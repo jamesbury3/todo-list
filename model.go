@@ -495,7 +495,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentView == viewReady && len(m.ready) > 0 && m.cursor < len(m.ready) {
 				todo := m.ready[m.cursor]
 				m.ready = append(m.ready[:m.cursor], m.ready[m.cursor+1:]...)
-				m.backlog = append(m.backlog, todo)
+				m.backlog = append([]Todo{todo}, m.backlog...)
 				if m.cursor >= len(m.ready) && m.cursor > 0 {
 					m.cursor--
 				}
