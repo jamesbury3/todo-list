@@ -1,4 +1,4 @@
-# Terminal Todo List
+# TTodo List TUI
 
 ### Introduction
 
