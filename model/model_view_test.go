@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 
 func TestViewRendering(t *testing.T) {
 	now := time.Now()
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: now},
@@ -37,7 +37,7 @@ func TestViewRendering(t *testing.T) {
 }
 
 func TestViewRenderingEmptyList(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog:     []Todo{},
 	}
@@ -50,7 +50,7 @@ func TestViewRenderingEmptyList(t *testing.T) {
 }
 
 func TestViewRenderingAddingMode(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		adding:      true,
 		newTodo:     "new task",
@@ -70,7 +70,7 @@ func TestViewRenderingAddingMode(t *testing.T) {
 }
 
 func TestViewRenderingDeleteConfirmation(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView:      viewBacklog,
 		confirmingDelete: true,
 	}
@@ -280,7 +280,7 @@ func TestRenderColoredTextWithCursor(t *testing.T) {
 }
 
 func TestInit(t *testing.T) {
-	m := model{}
+	m := Model{}
 	cmd := m.Init()
 	if cmd == nil {
 		t.Error("Init() should return tea.ClearScreen command")

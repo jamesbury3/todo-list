@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestGetCurrentList(t *testing.T) {
-	m := model{
+	m := Model{
 		backlog: []Todo{
 			{Text: "backlog1", CreatedAt: time.Now()},
 		},
@@ -115,7 +115,7 @@ func TestUpdateDisplayedCompleted(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := model{
+			m := Model{
 				completed: tt.completed,
 			}
 			m.updateDisplayedCompleted()
@@ -142,7 +142,7 @@ func TestUpdateDisplayedCompleted(t *testing.T) {
 
 func TestUpdateCompletedTodo(t *testing.T) {
 	now := time.Now()
-	m := model{
+	m := Model{
 		completed: []Todo{
 			{Text: "task1", CreatedAt: now, CompletedAt: &now},
 			{Text: "task2", CreatedAt: now, CompletedAt: &now},
@@ -263,7 +263,7 @@ func TestCountCompletedToday(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := model{
+			m := Model{
 				completed: tt.completed,
 			}
 			count := m.countCompletedToday()

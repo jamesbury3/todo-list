@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"encoding/json"
@@ -57,7 +57,7 @@ func (t *Todo) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type model struct {
+type Model struct {
 	backlog                []Todo
 	ready                  []Todo
 	completed              []Todo

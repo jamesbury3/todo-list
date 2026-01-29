@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestUpdateCursorNavigation(t *testing.T) {
-	m := model{
+	m := Model{
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
 			{Text: "task2", CreatedAt: time.Now()},
@@ -21,56 +21,56 @@ func TestUpdateCursorNavigation(t *testing.T) {
 
 	// Move down
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.cursor != 1 {
 		t.Errorf("cursor after 'j' = %d, want 1", m.cursor)
 	}
 
 	// Move down again
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.cursor != 2 {
 		t.Errorf("cursor after second 'j' = %d, want 2", m.cursor)
 	}
 
 	// Try to move down past end (should stay at 2)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.cursor != 2 {
 		t.Errorf("cursor after 'j' at end = %d, want 2", m.cursor)
 	}
 
 	// Move up
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.cursor != 1 {
 		t.Errorf("cursor after 'k' = %d, want 1", m.cursor)
 	}
 
 	// Move up to beginning
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.cursor != 0 {
 		t.Errorf("cursor after second 'k' = %d, want 0", m.cursor)
 	}
 
 	// Try to move up past beginning (should stay at 0)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.cursor != 0 {
 		t.Errorf("cursor after 'k' at beginning = %d, want 0", m.cursor)
 	}
 }
 
 func TestUpdateViewSwitching(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewReady,
 		cursor:      5,
 	}
 
 	// Switch left to backlog
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.currentView != viewBacklog {
 		t.Errorf("currentView after 'h' from Ready = %v, want %v", m.currentView, viewBacklog)
 	}
@@ -80,58 +80,58 @@ func TestUpdateViewSwitching(t *testing.T) {
 
 	// Switch right to ready
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.currentView != viewReady {
 		t.Errorf("currentView after 'l' from Backlog = %v, want %v", m.currentView, viewReady)
 	}
 
 	// Switch right to completed
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.currentView != viewCompleted {
 		t.Errorf("currentView after 'l' from Ready = %v, want %v", m.currentView, viewCompleted)
 	}
 
 	// Try to switch right from completed (should stay at completed)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.currentView != viewCompleted {
 		t.Errorf("currentView after 'l' from Completed = %v, want %v", m.currentView, viewCompleted)
 	}
 
 	// Switch left to ready
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.currentView != viewReady {
 		t.Errorf("currentView after 'h' from Completed = %v, want %v", m.currentView, viewReady)
 	}
 }
 
 func TestUpdateAddingMode(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog:     []Todo{},
 	}
 
 	// Enter adding mode
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if !m.adding {
 		t.Error("adding mode not activated after 'a'")
 	}
 
 	// Type some text
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
-	m = updated.(model)
+	m = updated.(Model)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.newTodo != "hi" {
 		t.Errorf("newTodo = %q, want 'hi'", m.newTodo)
 	}
 
 	// Cancel with escape
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.adding {
 		t.Error("adding mode still active after escape")
 	}
@@ -141,7 +141,7 @@ func TestUpdateAddingMode(t *testing.T) {
 }
 
 func TestUpdateEditingDescriptionMode(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
@@ -151,27 +151,27 @@ func TestUpdateEditingDescriptionMode(t *testing.T) {
 
 	// Enter editing mode
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if !m.editingDescription {
 		t.Error("editing mode not activated after 'e'")
 	}
 
 	// Type some text
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
-	m = updated.(model)
+	m = updated.(Model)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-	m = updated.(model)
+	m = updated.(Model)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
-	m = updated.(model)
+	m = updated.(Model)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.newDescription != "desc" {
 		t.Errorf("newDescription = %q, want 'desc'", m.newDescription)
 	}
 
 	// Cancel with escape
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.editingDescription {
 		t.Error("editing mode still active after escape")
 	}
@@ -181,7 +181,7 @@ func TestUpdateEditingDescriptionMode(t *testing.T) {
 }
 
 func TestUpdateRenamingMode(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "oldname", CreatedAt: time.Now()},
@@ -191,7 +191,7 @@ func TestUpdateRenamingMode(t *testing.T) {
 
 	// Enter renaming mode
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if !m.renamingTodo {
 		t.Error("renaming mode not activated after 'n'")
 	}
@@ -202,18 +202,18 @@ func TestUpdateRenamingMode(t *testing.T) {
 	// Type new name
 	m.newTodoName = "" // Clear for test
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-	m = updated.(model)
+	m = updated.(Model)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-	m = updated.(model)
+	m = updated.(Model)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.newTodoName != "new" {
 		t.Errorf("newTodoName = %q, want 'new'", m.newTodoName)
 	}
 
 	// Cancel with escape
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.renamingTodo {
 		t.Error("renaming mode still active after escape")
 	}
@@ -223,7 +223,7 @@ func TestUpdateRenamingMode(t *testing.T) {
 }
 
 func TestUpdateDeleteConfirmation(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
@@ -233,14 +233,14 @@ func TestUpdateDeleteConfirmation(t *testing.T) {
 
 	// Press 'd' to enter delete confirmation
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if !m.confirmingDelete {
 		t.Error("confirmingDelete not activated after 'd'")
 	}
 
 	// Press 'n' to cancel
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.confirmingDelete {
 		t.Error("confirmingDelete still active after 'n'")
 	}
@@ -250,7 +250,7 @@ func TestUpdateDeleteConfirmation(t *testing.T) {
 }
 
 func TestUpdateToggleDescription(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"desc1"}, CreatedAt: time.Now()},
@@ -261,35 +261,35 @@ func TestUpdateToggleDescription(t *testing.T) {
 
 	// Toggle description on
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if !m.showingDescription {
 		t.Error("showingDescription should be true after 'i'")
 	}
 
 	// Toggle description off
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.showingDescription {
 		t.Error("showingDescription should be false after second 'i'")
 	}
 }
 
 func TestUpdateToggleAllDescriptions(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView:            viewBacklog,
 		showingAllDescriptions: false,
 	}
 
 	// Toggle all descriptions on
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'I'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if !m.showingAllDescriptions {
 		t.Error("showingAllDescriptions should be true after 'I'")
 	}
 
 	// Toggle all descriptions off
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'I'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.showingAllDescriptions {
 		t.Error("showingAllDescriptions should be false after second 'I'")
 	}
@@ -321,7 +321,7 @@ func TestInitialModel(t *testing.T) {
 	_ = saveTodos(testCompletedFile, completedTodos)
 
 	// Manually construct model with test data (instead of using initialModel() which uses production files)
-	m := model{
+	m := Model{
 		backlog:     loadTodos(testBacklogFile),
 		ready:       loadTodos(testReadyFile),
 		completed:   loadTodos(testCompletedFile),
@@ -349,7 +349,7 @@ func TestInitialModel(t *testing.T) {
 }
 
 func TestUpdateMoveBacklogToReady(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
@@ -360,7 +360,7 @@ func TestUpdateMoveBacklogToReady(t *testing.T) {
 
 	// Press 'r' to move to ready
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if len(m.backlog) != 0 {
 		t.Errorf("backlog length after move = %d, want 0", len(m.backlog))
@@ -374,7 +374,7 @@ func TestUpdateMoveBacklogToReady(t *testing.T) {
 }
 
 func TestUpdateMarkComplete(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewReady,
 		backlog:     []Todo{},
 		ready: []Todo{
@@ -386,7 +386,7 @@ func TestUpdateMarkComplete(t *testing.T) {
 
 	// Press 'x' to mark as complete
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if len(m.ready) != 0 {
 		t.Errorf("ready length after complete = %d, want 0", len(m.ready))
@@ -404,7 +404,7 @@ func TestUpdateMarkComplete(t *testing.T) {
 
 func TestUpdateUndoComplete(t *testing.T) {
 	now := time.Now()
-	m := model{
+	m := Model{
 		currentView: viewCompleted,
 		backlog:     []Todo{},
 		ready:       []Todo{},
@@ -417,7 +417,7 @@ func TestUpdateUndoComplete(t *testing.T) {
 
 	// Press 'u' to undo completion
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if len(m.completed) != 0 {
 		t.Errorf("completed length after undo = %d, want 0", len(m.completed))
@@ -434,7 +434,7 @@ func TestUpdateUndoComplete(t *testing.T) {
 }
 
 func TestUpdateReorderDown(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
@@ -445,7 +445,7 @@ func TestUpdateReorderDown(t *testing.T) {
 
 	// Press 'J' to swap with item below
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'J'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.backlog[0].Text != "task2" {
 		t.Errorf("backlog[0].Text after swap = %q, want 'task2'", m.backlog[0].Text)
@@ -459,7 +459,7 @@ func TestUpdateReorderDown(t *testing.T) {
 }
 
 func TestUpdateReorderUp(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
@@ -470,7 +470,7 @@ func TestUpdateReorderUp(t *testing.T) {
 
 	// Press 'K' to swap with item above
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'K'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.backlog[0].Text != "task2" {
 		t.Errorf("backlog[0].Text after swap = %q, want 'task2'", m.backlog[0].Text)
@@ -484,7 +484,7 @@ func TestUpdateReorderUp(t *testing.T) {
 }
 
 func TestUpdateConfirmDelete(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
@@ -495,11 +495,11 @@ func TestUpdateConfirmDelete(t *testing.T) {
 
 	// Press 'd' to enter delete confirmation
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	// Press 'y' to confirm delete
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if len(m.backlog) != 1 {
 		t.Errorf("backlog length after delete = %d, want 1", len(m.backlog))
@@ -513,7 +513,7 @@ func TestUpdateConfirmDelete(t *testing.T) {
 }
 
 func TestUpdateSaveNewTodo(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog:     []Todo{},
 		adding:      true,
@@ -522,7 +522,7 @@ func TestUpdateSaveNewTodo(t *testing.T) {
 
 	// Press Enter to save
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if len(m.backlog) != 1 {
 		t.Errorf("backlog length after save = %d, want 1", len(m.backlog))
@@ -539,7 +539,7 @@ func TestUpdateSaveNewTodo(t *testing.T) {
 }
 
 func TestUpdateSaveDescription(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: time.Now()},
@@ -551,7 +551,7 @@ func TestUpdateSaveDescription(t *testing.T) {
 
 	// Press Enter to save description
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if len(m.backlog[0].Description) != 1 || m.backlog[0].Description[0] != "new description" {
 		t.Errorf("backlog[0].Description = %v, want ['new description']", m.backlog[0].Description)
@@ -565,7 +565,7 @@ func TestUpdateSaveDescription(t *testing.T) {
 }
 
 func TestUpdateSaveRename(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "old name", CreatedAt: time.Now()},
@@ -577,7 +577,7 @@ func TestUpdateSaveRename(t *testing.T) {
 
 	// Press Enter to save rename
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.backlog[0].Text != "New name" {
 		t.Errorf("backlog[0].Text = %q, want 'new name'", m.backlog[0].Text)
@@ -591,7 +591,7 @@ func TestUpdateSaveRename(t *testing.T) {
 }
 
 func TestUpdateMoveReadyToBacklog(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewReady,
 		backlog: []Todo{
 			{Text: "existing backlog", CreatedAt: time.Now()},
@@ -604,7 +604,7 @@ func TestUpdateMoveReadyToBacklog(t *testing.T) {
 
 	// Press 'b' to move from ready to backlog
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	// Verify task moved
 	if len(m.ready) != 0 {
@@ -633,7 +633,7 @@ func TestUpdateBackupAndClear(t *testing.T) {
 	now := time.Now()
 	completedTime := now.Add(-1 * time.Hour)
 
-	m := model{
+	m := Model{
 		currentView: viewCompleted,
 		completed: []Todo{
 			{Text: "task1", CreatedAt: now, CompletedAt: &completedTime},
@@ -645,7 +645,7 @@ func TestUpdateBackupAndClear(t *testing.T) {
 
 	// Press 'B' to backup and clear
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'B'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	// Verify completed list is cleared
 	if len(m.completed) != 0 {
@@ -680,13 +680,13 @@ func TestUpdateBackupAndClear(t *testing.T) {
 }
 
 func TestUpdateToggleHelp(t *testing.T) {
-	m := model{
+	m := Model{
 		showingCommands: false,
 	}
 
 	// Press '?' to toggle help on
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if !m.showingCommands {
 		t.Error("showingCommands should be true after '?'")
@@ -694,7 +694,7 @@ func TestUpdateToggleHelp(t *testing.T) {
 
 	// Press '?' again to toggle off
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.showingCommands {
 		t.Error("showingCommands should be false after second '?'")
@@ -702,7 +702,7 @@ func TestUpdateToggleHelp(t *testing.T) {
 }
 
 func TestUpdateEnterDescriptionNavigation(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"desc1", "desc2"}, CreatedAt: time.Now()},
@@ -713,7 +713,7 @@ func TestUpdateEnterDescriptionNavigation(t *testing.T) {
 
 	// Press Enter to enter description navigation mode
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if !m.navigatingDescriptions {
 		t.Error("navigatingDescriptions should be true after Enter")
@@ -727,7 +727,7 @@ func TestUpdateEnterDescriptionNavigation(t *testing.T) {
 }
 
 func TestUpdateEnterDescriptionNavigationNoDescriptions(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task without desc", CreatedAt: time.Now()},
@@ -737,7 +737,7 @@ func TestUpdateEnterDescriptionNavigationNoDescriptions(t *testing.T) {
 
 	// Press Enter when todo has no descriptions
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.navigatingDescriptions {
 		t.Error("navigatingDescriptions should be false for todo with no descriptions")
@@ -748,7 +748,7 @@ func TestUpdateEnterDescriptionNavigationNoDescriptions(t *testing.T) {
 }
 
 func TestDescriptionNavigationMode(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"desc1", "desc2", "desc3"}, CreatedAt: time.Now()},
@@ -761,49 +761,49 @@ func TestDescriptionNavigationMode(t *testing.T) {
 
 	// Navigate down with 'j'
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.descriptionCursor != 1 {
 		t.Errorf("descriptionCursor after 'j' = %d, want 1", m.descriptionCursor)
 	}
 
 	// Navigate down again
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.descriptionCursor != 2 {
 		t.Errorf("descriptionCursor after second 'j' = %d, want 2", m.descriptionCursor)
 	}
 
 	// Try to navigate past end (should stay at 2)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.descriptionCursor != 2 {
 		t.Errorf("descriptionCursor should not go past end, got %d", m.descriptionCursor)
 	}
 
 	// Navigate up with 'k'
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.descriptionCursor != 1 {
 		t.Errorf("descriptionCursor after 'k' = %d, want 1", m.descriptionCursor)
 	}
 
 	// Navigate to top
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.descriptionCursor != 0 {
 		t.Errorf("descriptionCursor after second 'k' = %d, want 0", m.descriptionCursor)
 	}
 
 	// Try to navigate past beginning (should stay at 0)
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.descriptionCursor != 0 {
 		t.Errorf("descriptionCursor should not go below 0, got %d", m.descriptionCursor)
 	}
 
 	// Exit with Esc
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	m = updated.(model)
+	m = updated.(Model)
 	if m.navigatingDescriptions {
 		t.Error("navigatingDescriptions should be false after Esc")
 	}
@@ -813,7 +813,7 @@ func TestDescriptionNavigationMode(t *testing.T) {
 }
 
 func TestDescriptionNavigationExitOnTodoChange(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"desc1"}, CreatedAt: time.Now()},
@@ -826,7 +826,7 @@ func TestDescriptionNavigationExitOnTodoChange(t *testing.T) {
 
 	// When NOT in navigation mode, moving between todos with 'j'/'k' should ensure navigation stays off
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.cursor != 0 {
 		t.Errorf("cursor should be 0 after 'k', got %d", m.cursor)
@@ -837,7 +837,7 @@ func TestDescriptionNavigationExitOnTodoChange(t *testing.T) {
 
 	// Move down
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.cursor != 1 {
 		t.Errorf("cursor should be 1 after 'j', got %d", m.cursor)
@@ -848,7 +848,7 @@ func TestDescriptionNavigationExitOnTodoChange(t *testing.T) {
 }
 
 func TestDescriptionDeletionInNavigation(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"desc1", "desc2", "desc3"}, CreatedAt: time.Now()},
@@ -860,7 +860,7 @@ func TestDescriptionDeletionInNavigation(t *testing.T) {
 
 	// Press 'd' to enter delete confirmation
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if !m.confirmingDeleteDesc {
 		t.Error("confirmingDeleteDesc should be true after 'd'")
@@ -868,7 +868,7 @@ func TestDescriptionDeletionInNavigation(t *testing.T) {
 
 	// Press 'y' to confirm deletion
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.confirmingDeleteDesc {
 		t.Error("confirmingDeleteDesc should be false after confirmation")
@@ -883,7 +883,7 @@ func TestDescriptionDeletionInNavigation(t *testing.T) {
 }
 
 func TestDescriptionDeletionCancelled(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"desc1", "desc2"}, CreatedAt: time.Now()},
@@ -896,7 +896,7 @@ func TestDescriptionDeletionCancelled(t *testing.T) {
 
 	// Press 'n' to cancel deletion
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.confirmingDeleteDesc {
 		t.Error("confirmingDeleteDesc should be false after cancellation")
@@ -907,7 +907,7 @@ func TestDescriptionDeletionCancelled(t *testing.T) {
 }
 
 func TestDescriptionDeletionExitNavigationWhenEmpty(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"only desc"}, CreatedAt: time.Now()},
@@ -920,7 +920,7 @@ func TestDescriptionDeletionExitNavigationWhenEmpty(t *testing.T) {
 
 	// Delete the only description
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	// Should exit navigation mode when no descriptions remain
 	if m.navigatingDescriptions {
@@ -932,7 +932,7 @@ func TestDescriptionDeletionExitNavigationWhenEmpty(t *testing.T) {
 }
 
 func TestEditDescriptionInNavigationMode(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"old desc 1", "old desc 2"}, CreatedAt: time.Now()},
@@ -944,7 +944,7 @@ func TestEditDescriptionInNavigationMode(t *testing.T) {
 
 	// Press 'e' to edit description
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if !m.editingDescription {
 		t.Error("editingDescription should be true after 'e' in navigation mode")
@@ -959,7 +959,7 @@ func TestEditDescriptionInNavigationMode(t *testing.T) {
 
 	// Save with Enter
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if m.editingDescription {
 		t.Error("editingDescription should be false after save")
@@ -977,7 +977,7 @@ func TestEditDescriptionInNavigationMode(t *testing.T) {
 }
 
 func TestEditDescriptionNotInNavigationMode(t *testing.T) {
-	m := model{
+	m := Model{
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", Description: []string{"existing"}, CreatedAt: time.Now()},
@@ -988,7 +988,7 @@ func TestEditDescriptionNotInNavigationMode(t *testing.T) {
 
 	// Press 'e' when NOT in navigation mode
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-	m = updated.(model)
+	m = updated.(Model)
 
 	if !m.editingDescription {
 		t.Error("editingDescription should be true")
@@ -1003,7 +1003,7 @@ func TestEditDescriptionNotInNavigationMode(t *testing.T) {
 
 	// Save with Enter
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = updated.(model)
+	m = updated.(Model)
 
 	// Should append new description
 	if len(m.backlog[0].Description) != 2 {

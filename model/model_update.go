@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 // Update handles all user input and state changes
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width

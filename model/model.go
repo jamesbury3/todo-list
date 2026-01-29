@@ -1,10 +1,12 @@
-package main
+package model
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 // initialModel creates and returns the initial model state
-func initialModel() model {
-	m := model{
+func InitialModel() Model {
+	m := Model{
 		backlog:     loadTodos(backlogFile),
 		ready:       loadTodos(readyFile),
 		completed:   loadTodos(completedFile),
@@ -16,6 +18,6 @@ func initialModel() model {
 }
 
 // Init initializes the model and returns the initial command
-func (m model) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return tea.ClearScreen
 }

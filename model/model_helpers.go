@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"sort"
@@ -6,7 +6,7 @@ import (
 )
 
 // getCurrentList returns the list of todos for the current view
-func (m *model) getCurrentList() []Todo {
+func (m *Model) getCurrentList() []Todo {
 	switch m.currentView {
 	case viewBacklog:
 		return m.backlog
@@ -18,7 +18,7 @@ func (m *model) getCurrentList() []Todo {
 }
 
 // updateCompletedTodo finds and updates a todo in the completed list
-func (m *model) updateCompletedTodo(updateFn func(*Todo)) {
+func (m *Model) updateCompletedTodo(updateFn func(*Todo)) {
 	if m.cursor >= len(m.displayedCompleted) {
 		return
 	}
@@ -39,7 +39,7 @@ func swapTodos(list []Todo, idx1, idx2 int, filename string) {
 }
 
 // updateDisplayedCompleted sorts and limits the completed list for display
-func (m *model) updateDisplayedCompleted() {
+func (m *Model) updateDisplayedCompleted() {
 	if len(m.completed) == 0 {
 		m.displayedCompleted = []Todo{}
 		return
@@ -67,7 +67,7 @@ func (m *model) updateDisplayedCompleted() {
 }
 
 // countCompletedToday returns the number of todos completed today
-func (m *model) countCompletedToday() int {
+func (m *Model) countCompletedToday() int {
 	today := time.Now()
 	todayYear, todayMonth, todayDay := today.Date()
 	count := 0

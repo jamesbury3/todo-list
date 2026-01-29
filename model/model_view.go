@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"fmt"
@@ -115,7 +115,7 @@ func wrapText(text string, maxWidth int) []string {
 }
 
 // View renders the model's UI
-func (m model) View() string {
+func (m Model) View() string {
 	s := strings.Builder{}
 
 	// Use alternate screen buffer approach: render content without leading newline
