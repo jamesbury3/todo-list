@@ -4,7 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// initialModel creates and returns the initial model state
+// InitialModel creates and returns the initial model state
 func InitialModel() Model {
 	m := Model{
 		backlog:     loadTodos(backlogFile),
