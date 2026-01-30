@@ -23,6 +23,7 @@ The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of thes
 
 **Common**
 - `j`/`k` - Navigate down/up
+- `g`/`G` - Go to top/bottom of current list
 - `h`/`l` - Switch between views
 - `d` - Delete todo
 - `e` - Edit description
@@ -44,6 +45,8 @@ The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of thes
 
 **Completed**
 - `u` - Undo completion
+- `p` - Toggle prettify view (shows all todos grouped by week/day)
+- `P` - Export markdown (creates a markdown file with all todos including backups)
 - `B` - Empty all completed todos into a backup text file named after the current date and number of completed todos
 
 ### Additional Notes
