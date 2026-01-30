@@ -172,7 +172,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmingDeleteDesc = false
 				return m, nil
 
-			case "n":
+			case "n", "esc":
 				m.confirmingDeleteDesc = false
 				m.message = "Deletion cancelled"
 				return m, nil
@@ -180,6 +180,58 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Handle todo deletion confirmation
+		if m.confirmingDelete {
+			switch msg.String() {
+			case "y":
+				// Proceed with deletion
+				switch m.currentView {
+				case viewBacklog:
+					if len(m.backlog) > 0 && m.cursor < len(m.backlog) {
+						m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
+						if m.cursor >= len(m.backlog) && m.cursor > 0 {
+							m.cursor--
+						}
+						saveTodos(backlogFile, m.backlog)
+						m.message = "Todo deleted"
+					}
+				case viewReady:
+					if len(m.ready) > 0 && m.cursor < len(m.ready) {
+						m.ready = append(m.ready[:m.cursor], m.ready[m.cursor+1:]...)
+						if m.cursor >= len(m.ready) && m.cursor > 0 {
+							m.cursor--
+						}
+						saveTodos(readyFile, m.ready)
+						m.message = "Todo deleted"
+					}
+				case viewCompleted:
+					if len(m.displayedCompleted) > 0 && m.cursor < len(m.displayedCompleted) {
+						// Find and remove from the actual completed list
+						todoToDelete := m.displayedCompleted[m.cursor]
+						for i, todo := range m.completed {
+							if todo.Text == todoToDelete.Text && todo.CreatedAt.Equal(todoToDelete.CreatedAt) {
+								m.completed = append(m.completed[:i], m.completed[i+1:]...)
+								break
+							}
+						}
+						m.updateDisplayedCompleted()
+						if m.cursor >= len(m.displayedCompleted) && m.cursor > 0 {
+							m.cursor--
+						}
+						saveTodos(completedFile, m.completed)
+						m.message = "Todo deleted"
+					}
+				}
+				m.confirmingDelete = false
+				return m, nil
+
+			case "n", "esc":
+				m.confirmingDelete = false
+				m.message = "Deletion cancelled"
+				return m, nil
+			}
+			return m, nil
+		}
 		// Handle description navigation mode
 		if m.navigatingDescriptions {
 			switch msg.String() {
@@ -339,62 +391,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = ""
 			}
 
-		case "y":
-			if m.confirmingDelete {
-				// Proceed with deletion
-				switch m.currentView {
-				case viewBacklog:
-					if len(m.backlog) > 0 && m.cursor < len(m.backlog) {
-						m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
-						if m.cursor >= len(m.backlog) && m.cursor > 0 {
-							m.cursor--
-						}
-						saveTodos(backlogFile, m.backlog)
-						m.message = "Todo deleted"
-					}
-				case viewReady:
-					if len(m.ready) > 0 && m.cursor < len(m.ready) {
-						m.ready = append(m.ready[:m.cursor], m.ready[m.cursor+1:]...)
-						if m.cursor >= len(m.ready) && m.cursor > 0 {
-							m.cursor--
-						}
-						saveTodos(readyFile, m.ready)
-						m.message = "Todo deleted"
-					}
-				case viewCompleted:
-					if len(m.displayedCompleted) > 0 && m.cursor < len(m.displayedCompleted) {
-						// Find and remove from the actual completed list
-						todoToDelete := m.displayedCompleted[m.cursor]
-						for i, todo := range m.completed {
-							if todo.Text == todoToDelete.Text && todo.CreatedAt.Equal(todoToDelete.CreatedAt) {
-								m.completed = append(m.completed[:i], m.completed[i+1:]...)
-								break
-							}
-						}
-						m.updateDisplayedCompleted()
-						if m.cursor >= len(m.displayedCompleted) && m.cursor > 0 {
-							m.cursor--
-						}
-						saveTodos(completedFile, m.completed)
-						m.message = "Todo deleted"
-					}
-				}
-				m.confirmingDelete = false
-			}
-
 		case "n":
-			if m.confirmingDelete {
-				m.confirmingDelete = false
-				m.message = "Deletion cancelled"
-			} else {
-				// Rename mode
-				currentList := m.getCurrentList()
-				if len(currentList) > 0 && m.cursor < len(currentList) {
-					m.renamingTodo = true
-					m.newTodoName = currentList[m.cursor].Text
-					m.textInputCursor = len([]rune(m.newTodoName))
-					m.message = ""
-				}
+			// Rename mode
+			currentList := m.getCurrentList()
+			if len(currentList) > 0 && m.cursor < len(currentList) {
+				m.renamingTodo = true
+				m.newTodoName = currentList[m.cursor].Text
+				m.textInputCursor = len([]rune(m.newTodoName))
+				m.message = ""
 			}
 
 		case "x":
@@ -552,6 +556,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.message = fmt.Sprintf("Exported to %s!", filename)
 				}
+			}
+
+		case "esc":
+			// Universal untoggle: hide all descriptions and exit pretty view
+			if m.showingDescription || m.showingAllDescriptions || m.showingPrettify {
+				m.showingDescription = false
+				m.showingAllDescriptions = false
+				m.showingPrettify = false
+				m.message = ""
 			}
 		}
 	}
