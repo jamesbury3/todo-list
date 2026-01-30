@@ -279,10 +279,181 @@ func TestRenderColoredTextWithCursor(t *testing.T) {
 	}
 }
 
-func TestInit(t *testing.T) {
-	m := Model{}
-	cmd := m.Init()
-	if cmd == nil {
-		t.Error("Init() should return tea.ClearScreen command")
+func TestRenderPrettifyView(t *testing.T) {
+	now := time.Now()
+	yesterday := now.Add(-24 * time.Hour)
+	completedNow := now
+	completedYesterday := yesterday
+
+	tests := []struct {
+		name         string
+		todos        []Todo
+		title        string
+		exitKey      string
+		wantContains []string
+		description  string
+	}{
+		{
+			name:    "empty todos",
+			todos:   []Todo{},
+			title:   "TEST VIEW",
+			exitKey: "p",
+			wantContains: []string{
+				"TEST VIEW",
+				"No completed todos",
+				"Press p to exit prettify view",
+			},
+			description: "Should show empty message",
+		},
+		{
+			name: "single todo",
+			todos: []Todo{
+				{Text: "Test task", CreatedAt: now, CompletedAt: &completedNow},
+			},
+			title:   "COMPLETED - PRETTIFIED VIEW",
+			exitKey: "p",
+			wantContains: []string{
+				"COMPLETED - PRETTIFIED VIEW",
+				"Test task",
+				"Week of",
+			},
+			description: "Should display single todo",
+		},
+		{
+			name: "multiple todos same day",
+			todos: []Todo{
+				{Text: "Task 1", CreatedAt: now, CompletedAt: &completedNow},
+				{Text: "Task 2", CreatedAt: now, CompletedAt: &completedNow},
+			},
+			title:   "COMPLETED",
+			exitKey: "x",
+			wantContains: []string{
+				"Task 1",
+				"Task 2",
+				"Week of",
+			},
+			description: "Should display multiple todos from same day",
+		},
+		{
+			name: "todos with descriptions",
+			todos: []Todo{
+				{
+					Text:        "Task with notes",
+					Description: []string{"Note 1", "Note 2"},
+					CreatedAt:   now,
+					CompletedAt: &completedNow,
+				},
+			},
+			title:   "VIEW",
+			exitKey: "p",
+			wantContains: []string{
+				"Task with notes",
+				"Note 1",
+				"Note 2",
+			},
+			description: "Should display descriptions",
+		},
+		{
+			name: "todos from different days",
+			todos: []Todo{
+				{Text: "Today task", CreatedAt: now, CompletedAt: &completedNow},
+				{Text: "Yesterday task", CreatedAt: yesterday, CompletedAt: &completedYesterday},
+			},
+			title:   "MULTI DAY",
+			exitKey: "p",
+			wantContains: []string{
+				"Today task",
+				"Yesterday task",
+				"Week of",
+			},
+			description: "Should group by day",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := Model{
+				completed: tt.todos,
+				width:     80,
+			}
+
+			result := m.renderPrettifyView(tt.todos, tt.title, tt.exitKey)
+
+			for _, want := range tt.wantContains {
+				if !contains(result, want) {
+					t.Errorf("renderPrettifyView() missing %q in output", want)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderWrappedTextWithCursor(t *testing.T) {
+	tests := []struct {
+		name        string
+		text        string
+		cursorPos   int
+		maxWidth    int
+		expectedLen int
+		description string
+	}{
+		{
+			name:        "short text no wrapping",
+			text:        "hello",
+			cursorPos:   2,
+			maxWidth:    10,
+			expectedLen: 1,
+			description: "Text shorter than maxWidth should return single line",
+		},
+		{
+			name:        "long text with wrapping",
+			text:        "This is a very long text that needs wrapping",
+			cursorPos:   5,
+			maxWidth:    15,
+			expectedLen: 3,
+			description: "Long text should wrap to multiple lines",
+		},
+		{
+			name:        "maxWidth zero",
+			text:        "test",
+			cursorPos:   2,
+			maxWidth:    0,
+			expectedLen: 1,
+			description: "MaxWidth <= 0 should return single line",
+		},
+		{
+			name:        "cursor beyond text",
+			text:        "hi",
+			cursorPos:   10,
+			maxWidth:    20,
+			expectedLen: 1,
+			description: "Cursor beyond text should be handled",
+		},
+		{
+			name:        "empty text",
+			text:        "",
+			cursorPos:   0,
+			maxWidth:    10,
+			expectedLen: 1,
+			description: "Empty text should return cursor only",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := renderWrappedTextWithCursor(tt.text, tt.cursorPos, tt.maxWidth)
+
+			if len(result) != tt.expectedLen {
+				t.Errorf("renderWrappedTextWithCursor() returned %d lines, want %d",
+					len(result), tt.expectedLen)
+			}
+
+			// Verify result is not empty
+			for i, line := range result {
+				if line == "" {
+					t.Errorf("renderWrappedTextWithCursor() line[%d] should not be empty", i)
+				}
+			}
+		})
 	}
 }

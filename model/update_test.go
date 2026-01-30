@@ -2,6 +2,7 @@ package model
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -296,55 +297,101 @@ func TestUpdateToggleAllDescriptions(t *testing.T) {
 }
 
 func TestInitialModel(t *testing.T) {
-	// Test file constants - separate from production files
-	const (
-		testBacklogFile   = "test_todo_backlog.txt"
-		testReadyFile     = "test_todo_ready.txt"
-		testCompletedFile = "test_todo_completed.txt"
-	)
+	tmpDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tmpDir)
 
-	// Clean up test files at the end
-	defer func() {
-		_ = os.Remove(testBacklogFile)
-		_ = os.Remove(testReadyFile)
-		_ = os.Remove(testCompletedFile)
-	}()
-
-	// Create test data
 	now := time.Now()
-	backlogTodos := []Todo{{Text: "backlog1", CreatedAt: now}}
-	readyTodos := []Todo{{Text: "ready1", CreatedAt: now}}
-	completedTodos := []Todo{{Text: "completed1", CreatedAt: now, CompletedAt: &now}}
+	completedTime := now.Add(-1 * time.Hour)
 
-	_ = saveTodos(testBacklogFile, backlogTodos)
-	_ = saveTodos(testReadyFile, readyTodos)
-	_ = saveTodos(testCompletedFile, completedTodos)
+	tests := []struct {
+		name              string
+		backlogTodos      []Todo
+		readyTodos        []Todo
+		completedTodos    []Todo
+		expectedBacklog   int
+		expectedReady     int
+		expectedCompleted int
+		description       string
+	}{
+		{
+			name:              "empty state",
+			backlogTodos:      []Todo{},
+			readyTodos:        []Todo{},
+			completedTodos:    []Todo{},
+			expectedBacklog:   0,
+			expectedReady:     0,
+			expectedCompleted: 0,
+			description:       "Should initialize with empty lists",
+		},
+		{
+			name: "with existing todos",
+			backlogTodos: []Todo{
+				{Text: "Backlog task", CreatedAt: now},
+			},
+			readyTodos: []Todo{
+				{Text: "Ready task", CreatedAt: now},
+			},
+			completedTodos: []Todo{
+				{Text: "Completed task", CreatedAt: now, CompletedAt: &completedTime},
+			},
+			expectedBacklog:   1,
+			expectedReady:     1,
+			expectedCompleted: 1,
+			description:       "Should load existing todos",
+		},
+	}
 
-	// Manually construct model with test data (instead of using initialModel() which uses production files)
-	m := Model{
-		backlog:     loadTodos(testBacklogFile),
-		ready:       loadTodos(testReadyFile),
-		completed:   loadTodos(testCompletedFile),
-		cursor:      0,
-		currentView: viewReady,
-	}
-	m.updateDisplayedCompleted()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clean directory
+			matches, _ := filepath.Glob("*")
+			for _, match := range matches {
+				os.Remove(match)
+			}
 
-	// Verify data loaded
-	if len(m.backlog) != 1 {
-		t.Errorf("backlog length = %d, want 1", len(m.backlog))
+			// Create todo files
+			if len(tt.backlogTodos) > 0 {
+				saveTodos(backlogFile, tt.backlogTodos)
+			}
+			if len(tt.readyTodos) > 0 {
+				saveTodos(readyFile, tt.readyTodos)
+			}
+			if len(tt.completedTodos) > 0 {
+				saveTodos(completedFile, tt.completedTodos)
+			}
+
+			// Call InitialModel
+			m := InitialModel()
+
+			// Verify lists
+			if len(m.backlog) != tt.expectedBacklog {
+				t.Errorf("backlog len = %d, want %d", len(m.backlog), tt.expectedBacklog)
+			}
+			if len(m.ready) != tt.expectedReady {
+				t.Errorf("ready len = %d, want %d", len(m.ready), tt.expectedReady)
+			}
+			if len(m.displayedCompleted) != tt.expectedCompleted {
+				t.Errorf("displayedCompleted len = %d, want %d", len(m.displayedCompleted), tt.expectedCompleted)
+			}
+
+			// Verify initial state
+			if m.currentView != viewReady {
+				t.Errorf("currentView = %v, want %v", m.currentView, viewReady)
+			}
+			if m.cursor != 0 {
+				t.Errorf("cursor = %d, want 0", m.cursor)
+			}
+		})
 	}
-	if len(m.ready) != 1 {
-		t.Errorf("ready length = %d, want 1", len(m.ready))
-	}
-	if len(m.completed) != 1 {
-		t.Errorf("completed length = %d, want 1", len(m.completed))
-	}
-	if m.currentView != viewReady {
-		t.Errorf("currentView = %v, want %v", m.currentView, viewReady)
-	}
-	if m.cursor != 0 {
-		t.Errorf("cursor = %d, want 0", m.cursor)
+}
+
+func TestInit(t *testing.T) {
+	m := Model{}
+	cmd := m.Init()
+	if cmd == nil {
+		t.Error("Init() should return a command")
 	}
 }
 

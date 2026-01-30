@@ -390,3 +390,231 @@ func TestBackupCompletedTodosFilenameFormat(t *testing.T) {
 	// Clean up
 	os.Remove(backupFile)
 }
+
+func TestFindBackupFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tmpDir)
+
+	tests := []struct {
+		name          string
+		createFiles   []string
+		expectedCount int
+		description   string
+	}{
+		{
+			name:          "no backup files",
+			createFiles:   []string{},
+			expectedCount: 0,
+			description:   "Empty directory should return no backup files",
+		},
+		{
+			name: "single backup file",
+			createFiles: []string{
+				"todo_completed_backup_2024-01-15_5.txt",
+			},
+			expectedCount: 1,
+			description:   "Should find single backup file",
+		},
+		{
+			name: "multiple backup files",
+			createFiles: []string{
+				"todo_completed_backup_2024-01-15_5.txt",
+				"todo_completed_backup_2024-01-16_3.txt",
+				"todo_completed_backup_2024-01-17_8.txt",
+			},
+			expectedCount: 3,
+			description:   "Should find all backup files",
+		},
+		{
+			name: "mixed files",
+			createFiles: []string{
+				"todo_completed_backup_2024-01-15_5.txt",
+				"todo_backlog.txt",
+				"todo_ready.txt",
+				"todo_completed.txt",
+				"other_file.txt",
+			},
+			expectedCount: 1,
+			description:   "Should only find backup files, not other files",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clean directory
+			matches, _ := filepath.Glob("*")
+			for _, match := range matches {
+				os.Remove(match)
+			}
+
+			// Create test files
+			for _, filename := range tt.createFiles {
+				err := os.WriteFile(filename, []byte("test"), 0644)
+				if err != nil {
+					t.Fatalf("Failed to create test file %q: %v", filename, err)
+				}
+			}
+
+			// Find backup files
+			backupFiles, err := findBackupFiles()
+			if err != nil {
+				t.Fatalf("findBackupFiles() error = %v", err)
+			}
+
+			if len(backupFiles) != tt.expectedCount {
+				t.Errorf("findBackupFiles() returned %d files, want %d", len(backupFiles), tt.expectedCount)
+			}
+
+			// Verify all returned files match the pattern
+			for _, file := range backupFiles {
+				matched, err := filepath.Match("todo_completed_backup_*.txt", file)
+				if err != nil {
+					t.Fatalf("filepath.Match error: %v", err)
+				}
+				if !matched {
+					t.Errorf("findBackupFiles() returned non-backup file: %q", file)
+				}
+			}
+		})
+	}
+}
+
+func TestLoadAllCompletedTodos(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tmpDir)
+
+	now := time.Now()
+	completedTime := now.Add(-1 * time.Hour)
+
+	tests := []struct {
+		name               string
+		mainTodos          []Todo
+		backupFiles        map[string][]Todo
+		expectedTotalCount int
+		description        string
+	}{
+		{
+			name:               "no todos anywhere",
+			mainTodos:          []Todo{},
+			backupFiles:        map[string][]Todo{},
+			expectedTotalCount: 0,
+			description:        "No todos should return empty slice",
+		},
+		{
+			name: "only main file",
+			mainTodos: []Todo{
+				{Text: "Main task 1", CreatedAt: now, CompletedAt: &completedTime},
+				{Text: "Main task 2", CreatedAt: now, CompletedAt: &completedTime},
+			},
+			backupFiles:        map[string][]Todo{},
+			expectedTotalCount: 2,
+			description:        "Should load only main file todos",
+		},
+		{
+			name:      "only backup files",
+			mainTodos: []Todo{},
+			backupFiles: map[string][]Todo{
+				"todo_completed_backup_2024-01-15_2.txt": {
+					{Text: "Backup task 1", CreatedAt: now, CompletedAt: &completedTime},
+					{Text: "Backup task 2", CreatedAt: now, CompletedAt: &completedTime},
+				},
+			},
+			expectedTotalCount: 2,
+			description:        "Should load only backup todos",
+		},
+		{
+			name: "main and backup files",
+			mainTodos: []Todo{
+				{Text: "Main task", CreatedAt: now, CompletedAt: &completedTime},
+			},
+			backupFiles: map[string][]Todo{
+				"todo_completed_backup_2024-01-15_2.txt": {
+					{Text: "Backup task 1", CreatedAt: now, CompletedAt: &completedTime},
+					{Text: "Backup task 2", CreatedAt: now, CompletedAt: &completedTime},
+				},
+			},
+			expectedTotalCount: 3,
+			description:        "Should combine main and backup todos",
+		},
+		{
+			name: "multiple backup files",
+			mainTodos: []Todo{
+				{Text: "Main task", CreatedAt: now, CompletedAt: &completedTime},
+			},
+			backupFiles: map[string][]Todo{
+				"todo_completed_backup_2024-01-15_2.txt": {
+					{Text: "Backup1 task1", CreatedAt: now, CompletedAt: &completedTime},
+					{Text: "Backup1 task2", CreatedAt: now, CompletedAt: &completedTime},
+				},
+				"todo_completed_backup_2024-01-16_1.txt": {
+					{Text: "Backup2 task", CreatedAt: now, CompletedAt: &completedTime},
+				},
+			},
+			expectedTotalCount: 4,
+			description:        "Should combine all files",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clean directory
+			matches, _ := filepath.Glob("*")
+			for _, match := range matches {
+				os.Remove(match)
+			}
+
+			// Create main completed file
+			if len(tt.mainTodos) > 0 {
+				err := saveTodos(completedFile, tt.mainTodos)
+				if err != nil {
+					t.Fatalf("Failed to save main todos: %v", err)
+				}
+			}
+
+			// Create backup files
+			for filename, todos := range tt.backupFiles {
+				err := saveTodos(filename, todos)
+				if err != nil {
+					t.Fatalf("Failed to save backup file %q: %v", filename, err)
+				}
+			}
+
+			// Load all completed todos
+			allTodos := loadAllCompletedTodos()
+
+			if len(allTodos) != tt.expectedTotalCount {
+				t.Errorf("loadAllCompletedTodos() returned %d todos, want %d", len(allTodos), tt.expectedTotalCount)
+			}
+
+			// Verify that all todos from all sources are present
+			// Create a map of all expected todos
+			expectedTodos := make(map[string]bool)
+			for _, todo := range tt.mainTodos {
+				expectedTodos[todo.Text] = false
+			}
+			for _, todos := range tt.backupFiles {
+				for _, todo := range todos {
+					expectedTodos[todo.Text] = false
+				}
+			}
+
+			// Mark todos as found
+			for _, todo := range allTodos {
+				if _, exists := expectedTodos[todo.Text]; exists {
+					expectedTodos[todo.Text] = true
+				}
+			}
+
+			// Check all todos were found
+			for text, found := range expectedTodos {
+				if !found {
+					t.Errorf("Expected todo %q not found in loadAllCompletedTodos result", text)
+				}
+			}
+		})
+	}
+}
