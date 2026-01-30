@@ -310,10 +310,10 @@ func TestRenderPrettifyView(t *testing.T) {
 			todos: []Todo{
 				{Text: "Test task", CreatedAt: now, CompletedAt: &completedNow},
 			},
-			title:   "COMPLETED - PRETTIFIED VIEW",
+			title:   "COMPLETED",
 			exitKey: "p",
 			wantContains: []string{
-				"COMPLETED - PRETTIFIED VIEW",
+				"COMPLETED",
 				"Test task",
 				"Week of",
 			},

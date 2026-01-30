@@ -212,7 +212,7 @@ func (m Model) renderPrettifyView(todos []Todo, title string, exitKey string) st
 func (m Model) View() string {
 	// Check if we're in prettify mode (only available in Completed view)
 	if m.currentView == viewCompleted && m.showingPrettify {
-		return m.renderPrettifyView(m.completed, "COMPLETED - PRETTIFIED VIEW", "p")
+		return m.renderPrettifyView(m.completed, "COMPLETED", "p")
 	}
 
 	s := strings.Builder{}
