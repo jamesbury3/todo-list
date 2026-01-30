@@ -114,8 +114,107 @@ func wrapText(text string, maxWidth int) []string {
 	return lines
 }
 
+// renderPrettifyView renders all completed todos grouped by week and day
+func (m Model) renderPrettifyView() string {
+	s := strings.Builder{}
+
+	// Calculate available width for content
+	availableWidth := m.width
+	if availableWidth <= 0 {
+		availableWidth = 80
+	}
+	maxTextWidth := availableWidth - 35
+
+	// Render header
+	s.WriteString("  " + activeTabStyle.Render("COMPLETED - PRETTIFIED VIEW") + "\n\n")
+
+	if len(m.completed) == 0 {
+		s.WriteString("  " + infoMessageStyle.Render("No completed todos") + "\n\n")
+		s.WriteString("  " + helpTextStyle.Render("Press p to exit prettify view") + "\n\n")
+		return s.String()
+	}
+
+	// Group todos by week
+	weeks := groupTodosByWeek(m.completed)
+
+	for _, week := range weeks {
+		// Week header
+		weekRange := formatWeekRange(week.WeekStart, week.WeekEnd)
+		todoCount := 0
+		for _, day := range week.Days {
+			todoCount += len(day.Todos)
+		}
+		weekHeader := fmt.Sprintf("Week of %s (%d todos)", weekRange, todoCount)
+		s.WriteString("  " + headerStyle.Render(weekHeader) + "\n")
+		s.WriteString("  " + strings.Repeat("─", len(weekHeader)) + "\n\n")
+
+		// Days within the week
+		for _, day := range week.Days {
+			// Day header
+			dayHeader := formatDayHeader(day.Date)
+			s.WriteString("    " + countStyle.Render(dayHeader) + " " + helpTextStyle.Render(fmt.Sprintf("(%d todos)", len(day.Todos))) + "\n")
+
+			// Todos for this day
+			for _, todo := range day.Todos {
+				// Time of completion
+				timeStr := todo.CompletedAt.Format("15:04")
+				timestamp := timestampStyle.Render("[" + timeStr + "]")
+
+				// Wrap todo text if needed
+				wrappedLines := wrapText(todo.Text, maxTextWidth)
+
+				// Render first line with timestamp
+				if len(wrappedLines) > 0 {
+					todoText := todoTextStyle.Render(wrappedLines[0])
+					s.WriteString(fmt.Sprintf("      • %s %s\n", todoText, timestamp))
+
+					// Render additional wrapped lines with proper indentation
+					for j := 1; j < len(wrappedLines); j++ {
+						todoText := todoTextStyle.Render(wrappedLines[j])
+						s.WriteString(fmt.Sprintf("        %s\n", todoText))
+					}
+				}
+
+				// Always show all descriptions in prettify view
+				if len(todo.Description) > 0 {
+					for _, desc := range todo.Description {
+						// Wrap description text
+						descLines := wrapText(desc, maxTextWidth-5)
+
+						for j, descLine := range descLines {
+							if j == 0 {
+								s.WriteString("        " + descriptionStyle.Render("└─ "+descLine) + "\n")
+							} else {
+								s.WriteString("        " + descriptionStyle.Render("   "+descLine) + "\n")
+							}
+						}
+					}
+				}
+			}
+
+			s.WriteString("\n")
+		}
+
+		s.WriteString("\n")
+	}
+
+	s.WriteString("  " + helpTextStyle.Render("Press p to exit prettify view, q to quit") + "\n\n")
+
+	if m.message != "" {
+		msgStyle := infoMessageStyle
+		s.WriteString("  " + msgStyle.Render(m.message) + "\n")
+	}
+
+	return s.String()
+}
+
 // View renders the model's UI
 func (m Model) View() string {
+	// Check if we're in prettify mode (only available in Completed view)
+	if m.currentView == viewCompleted && m.showingPrettify {
+		return m.renderPrettifyView()
+	}
+
 	s := strings.Builder{}
 
 	// Use alternate screen buffer approach: render content without leading newline
@@ -262,7 +361,7 @@ func (m Model) View() string {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
 		s.WriteString("  " + commandStyle.Render("j/k: move down/up  g/G: go to top/bottom  J/K: reorder (backlog/ready)  h/l: switch views") + "\n")
 		if m.currentView == viewCompleted {
-			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  B: backup and clear completed") + "\n")
+			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  p: prettify view  B: backup and clear completed") + "\n")
 		} else if m.currentView == viewReady {
 			s.WriteString("  " + commandStyle.Render("a: add  d: delete  x: mark complete  b: move to backlog") + "\n")
 		} else if m.currentView == viewBacklog {

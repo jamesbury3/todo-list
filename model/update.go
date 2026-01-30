@@ -531,6 +531,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.navigatingDescriptions = false
 				m.descriptionCursor = 0
 			}
+
+		case "p":
+			// Toggle prettify view (only in Completed tab)
+			if m.currentView == viewCompleted {
+				m.showingPrettify = !m.showingPrettify
+				m.message = ""
+				m.showingDescription = false
+				m.navigatingDescriptions = false
+				m.descriptionCursor = 0
+			}
 		}
 	}
 
