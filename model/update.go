@@ -484,7 +484,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "Todo completed!"
 			}
 
-		case "u":
+		case "r":
 			if m.currentView == viewCompleted && len(m.displayedCompleted) > 0 && m.cursor < len(m.displayedCompleted) {
 				// Find and remove from the actual completed list
 				todoToUndo := m.displayedCompleted[m.cursor]
@@ -507,6 +507,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if cmd := m.save(completedFile, m.completed); cmd != nil {
 					return m, cmd
 				}
+				m.message = "Todo moved back to ready!"
+			} else if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor < len(m.backlog) {
+				todo := m.backlog[m.cursor]
+				m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
+				m.ready = append(m.ready, todo)
+				if m.cursor >= len(m.backlog) && m.cursor > 0 {
+					m.cursor--
+				}
+				if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+					return m, cmd
+				}
+				if cmd := m.save(readyFile, m.ready); cmd != nil {
+					return m, cmd
+				}
 				m.message = "Todo moved to ready!"
 			}
 
@@ -526,23 +540,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.message = fmt.Sprintf("Backed up to %s and cleared completed todos!", backupFile)
 				}
-			}
-
-		case "r":
-			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor < len(m.backlog) {
-				todo := m.backlog[m.cursor]
-				m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
-				m.ready = append(m.ready, todo)
-				if m.cursor >= len(m.backlog) && m.cursor > 0 {
-					m.cursor--
-				}
-				if cmd := m.save(backlogFile, m.backlog); cmd != nil {
-					return m, cmd
-				}
-				if cmd := m.save(readyFile, m.ready); cmd != nil {
-					return m, cmd
-				}
-				m.message = "Todo moved to ready!"
 			}
 
 		case "b":

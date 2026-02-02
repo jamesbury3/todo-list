@@ -361,7 +361,7 @@ func (m Model) View() string {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
 		s.WriteString("  " + commandStyle.Render("j/k: move down/up  g/G: go to top/bottom  J/K: reorder (backlog/ready)  t: move to top (backlog/ready)  h/l: switch views") + "\n")
 		if m.currentView == viewCompleted {
-			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  p: prettify view  P: export markdown  B: backup and clear") + "\n")
+			s.WriteString("  " + commandStyle.Render("d: delete  r: move back to ready  p: prettify view  P: export markdown  B: backup and clear") + "\n")
 		} else if m.currentView == viewReady {
 			s.WriteString("  " + commandStyle.Render("a: add  d: delete  x: mark complete  b: move to backlog") + "\n")
 		} else if m.currentView == viewBacklog {

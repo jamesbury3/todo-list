@@ -46,7 +46,7 @@ The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of thes
 - `t` - Move todo to top
 
 **Completed**
-- `u` - Undo completion
+- `r` - Move back to ready
 - `p` - Toggle prettify view (shows all todos grouped by week/day)
 - `P` - Export markdown (creates a markdown file with all todos including backups)
 - `B` - Empty all completed todos into a backup text file named after the current date and number of completed todos

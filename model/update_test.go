@@ -462,8 +462,8 @@ func TestUpdateUndoComplete(t *testing.T) {
 	}
 	m.updateDisplayedCompleted()
 
-	// Press 'u' to undo completion
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	// Press 'r' to move to ready
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
 	m = updated.(Model)
 
 	if len(m.completed) != 0 {
