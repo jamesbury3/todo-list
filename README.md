@@ -6,16 +6,13 @@ This is a terminal-based todo list application built for keyboard navigation wit
 
 <img width="747" height="247" alt="Screenshot 2026-01-28 at 7 10 19 AM" src="https://github.com/user-attachments/assets/2c54f931-3be5-40e1-8c5c-b2f1f3896c75" />
 
-### Getting Started
+### Installation
 
-1. Install Go v1.25+ 
-2. Clone this repository
-3. Run the following command
-```
-go build
-```
-4. Move the binary to the folder where you want to save your todo list
-5. Run the binary and you're done!
+1. Download the most recent binary from [Releases](https://github.com/jamesbury3/Todo-List-TUI/releases)
+2. Place the binary in the location where you want your todos to be saved, such as a cloud synced folder
+3. Run the application, and you're good to go!
+   - You can also copy the binary into multiple folders if you prefer to have separate todo lists for separate projects
+   - Unless you're storing your todo lists on your Desktop, you may want to create a Desktop shortcut to the binary
 
 ### Usage
 
@@ -54,3 +51,16 @@ The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of thes
 ### Additional Notes
 
 - The Completed page will only show the 10 most recently completed todos. To see the rest, you can always open todo_completed.txt and your backup files.
+
+### Build Yourself
+
+To build the application yourself with Go:
+
+1. Install Go v1.25+ 
+2. Clone this repository
+3. Run the following command
+```
+go build
+```
+4. Move the binary to the folder where you want to save your todo list
+5. Run the binary and you're done!
