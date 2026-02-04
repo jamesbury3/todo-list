@@ -13,21 +13,21 @@ func TestLoadTodos(t *testing.T) {
 		fileContent   string
 		expectedCount int
 		expectedText  []string
-		description   string
+		update        string
 	}{
 		{
 			name:          "empty file",
 			fileContent:   "",
 			expectedCount: 0,
 			expectedText:  []string{},
-			description:   "Empty file should return empty slice",
+			update:        "Empty file should return empty slice",
 		},
 		{
 			name:          "single valid JSON",
 			fileContent:   `{"text":"Task 1","created_at":"2024-01-01T10:00:00Z"}`,
 			expectedCount: 1,
 			expectedText:  []string{"Task 1"},
-			description:   "Single JSON line should be parsed correctly",
+			update:        "Single JSON line should be parsed correctly",
 		},
 		{
 			name: "multiple valid JSON",
@@ -36,7 +36,7 @@ func TestLoadTodos(t *testing.T) {
 {"text":"Task 3","created_at":"2024-01-01T12:00:00Z"}`,
 			expectedCount: 3,
 			expectedText:  []string{"Task 1", "Task 2", "Task 3"},
-			description:   "Multiple JSON lines should be parsed correctly",
+			update:        "Multiple JSON lines should be parsed correctly",
 		},
 		{
 			name: "legacy plain text format",
@@ -44,7 +44,7 @@ func TestLoadTodos(t *testing.T) {
 Plain text task 2`,
 			expectedCount: 2,
 			expectedText:  []string{"Plain text task 1", "Plain text task 2"},
-			description:   "Legacy plain text format should be converted to Todo",
+			update:        "Legacy plain text format should be converted to Todo",
 		},
 		{
 			name: "malformed JSON skipped",
@@ -53,14 +53,14 @@ Plain text task 2`,
 {"text":"Task 2","created_at":"2024-01-01T11:00:00Z"}`,
 			expectedCount: 3,
 			expectedText:  []string{"Task 1", "{invalid json}", "Task 2"},
-			description:   "Malformed JSON should be treated as plain text",
+			update:        "Malformed JSON should be treated as plain text",
 		},
 		{
 			name:          "UTF-8 characters in JSON",
 			fileContent:   `{"text":"世界你好 🌍","created_at":"2024-01-01T10:00:00Z"}`,
 			expectedCount: 1,
 			expectedText:  []string{"世界你好 🌍"},
-			description:   "UTF-8 characters should be preserved",
+			update:        "UTF-8 characters should be preserved",
 		},
 		{
 			name: "mixed JSON and plain text",
@@ -69,7 +69,7 @@ Plain text task
 {"text":"Another JSON","created_at":"2024-01-01T11:00:00Z"}`,
 			expectedCount: 3,
 			expectedText:  []string{"JSON Task", "Plain text task", "Another JSON"},
-			description:   "Mixed formats should be handled",
+			update:        "Mixed formats should be handled",
 		},
 		{
 			name: "blank lines ignored",
@@ -80,21 +80,21 @@ Plain text task
 {"text":"Task 3","created_at":"2024-01-01T12:00:00Z"}`,
 			expectedCount: 3,
 			expectedText:  []string{"Task 1", "Task 2", "Task 3"},
-			description:   "Blank lines should be ignored",
+			update:        "Blank lines should be ignored",
 		},
 		{
-			name:          "JSON with description array",
-			fileContent:   `{"text":"Task with desc","description":["desc1","desc2"],"created_at":"2024-01-01T10:00:00Z"}`,
+			name:          "JSON with updates array",
+			fileContent:   `{"text":"Task with desc","updates":["desc1","desc2"],"created_at":"2024-01-01T10:00:00Z"}`,
 			expectedCount: 1,
 			expectedText:  []string{"Task with desc"},
-			description:   "JSON with description array should be parsed",
+			update:        "JSON with updates array should be parsed",
 		},
 		{
 			name:          "JSON with legacy description string",
 			fileContent:   `{"text":"Task with old desc","description":"old format","created_at":"2024-01-01T10:00:00Z"}`,
 			expectedCount: 1,
 			expectedText:  []string{"Task with old desc"},
-			description:   "Old description format should be converted",
+			update:        "Old description format should be converted",
 		},
 	}
 
@@ -161,13 +161,13 @@ func TestSaveTodos(t *testing.T) {
 		name          string
 		todos         []Todo
 		expectedLines int
-		description   string
+		update        string
 	}{
 		{
 			name:          "empty list",
 			todos:         []Todo{},
 			expectedLines: 0,
-			description:   "Empty todo list should create empty file",
+			update:        "Empty todo list should create empty file",
 		},
 		{
 			name: "single todo",
@@ -175,7 +175,7 @@ func TestSaveTodos(t *testing.T) {
 				{Text: "Task 1", CreatedAt: now},
 			},
 			expectedLines: 1,
-			description:   "Single todo should create one line",
+			update:        "Single todo should create one line",
 		},
 		{
 			name: "multiple todos",
@@ -185,19 +185,19 @@ func TestSaveTodos(t *testing.T) {
 				{Text: "Task 3", CreatedAt: now},
 			},
 			expectedLines: 3,
-			description:   "Multiple todos should create multiple lines",
+			update:        "Multiple todos should create multiple lines",
 		},
 		{
-			name: "todo with description",
+			name: "todo with updates",
 			todos: []Todo{
 				{
-					Text:        "Task with desc",
-					Description: []string{"desc1", "desc2"},
-					CreatedAt:   now,
+					Text:      "Task with desc",
+					Updates:   []string{"desc1", "desc2"},
+					CreatedAt: now,
 				},
 			},
 			expectedLines: 1,
-			description:   "Todo with description should be serialized",
+			update:        "Todo with updates should be serialized",
 		},
 		{
 			name: "completed todo",
@@ -209,7 +209,7 @@ func TestSaveTodos(t *testing.T) {
 				},
 			},
 			expectedLines: 1,
-			description:   "Completed todo should preserve CompletedAt",
+			update:        "Completed todo should preserve CompletedAt",
 		},
 		{
 			name: "UTF-8 characters",
@@ -217,7 +217,7 @@ func TestSaveTodos(t *testing.T) {
 				{Text: "世界你好 🌍", CreatedAt: now},
 			},
 			expectedLines: 1,
-			description:   "UTF-8 characters should be preserved",
+			update:        "UTF-8 characters should be preserved",
 		},
 	}
 
@@ -250,8 +250,8 @@ func TestSaveTodos(t *testing.T) {
 					t.Errorf("Todo[%d].Text = %q, want %q", i, loaded[i].Text, original.Text)
 				}
 
-				if len(loaded[i].Description) != len(original.Description) {
-					t.Errorf("Todo[%d].Description length = %d, want %d", i, len(loaded[i].Description), len(original.Description))
+				if len(loaded[i].Updates) != len(original.Updates) {
+					t.Errorf("Todo[%d].Updates length = %d, want %d", i, len(loaded[i].Updates), len(original.Updates))
 				}
 
 				// Verify CompletedAt if set
@@ -273,13 +273,13 @@ func TestBackupCompletedTodos(t *testing.T) {
 		name        string
 		todos       []Todo
 		expectError bool
-		description string
+		update      string
 	}{
 		{
 			name:        "empty list",
 			todos:       []Todo{},
 			expectError: false,
-			description: "Empty list should create backup file",
+			update:      "Empty list should create backup file",
 		},
 		{
 			name: "single todo",
@@ -291,7 +291,7 @@ func TestBackupCompletedTodos(t *testing.T) {
 				},
 			},
 			expectError: false,
-			description: "Single completed todo should be backed up",
+			update:      "Single completed todo should be backed up",
 		},
 		{
 			name: "multiple todos",
@@ -301,7 +301,7 @@ func TestBackupCompletedTodos(t *testing.T) {
 				{Text: "Task 3", CreatedAt: now, CompletedAt: &completedTime},
 			},
 			expectError: false,
-			description: "Multiple todos should be backed up",
+			update:      "Multiple todos should be backed up",
 		},
 	}
 
@@ -401,13 +401,13 @@ func TestFindBackupFiles(t *testing.T) {
 		name          string
 		createFiles   []string
 		expectedCount int
-		description   string
+		update        string
 	}{
 		{
 			name:          "no backup files",
 			createFiles:   []string{},
 			expectedCount: 0,
-			description:   "Empty directory should return no backup files",
+			update:        "Empty directory should return no backup files",
 		},
 		{
 			name: "single backup file",
@@ -415,7 +415,7 @@ func TestFindBackupFiles(t *testing.T) {
 				"todo_completed_backup_2024-01-15_5.txt",
 			},
 			expectedCount: 1,
-			description:   "Should find single backup file",
+			update:        "Should find single backup file",
 		},
 		{
 			name: "multiple backup files",
@@ -425,7 +425,7 @@ func TestFindBackupFiles(t *testing.T) {
 				"todo_completed_backup_2024-01-17_8.txt",
 			},
 			expectedCount: 3,
-			description:   "Should find all backup files",
+			update:        "Should find all backup files",
 		},
 		{
 			name: "mixed files",
@@ -437,7 +437,7 @@ func TestFindBackupFiles(t *testing.T) {
 				"other_file.txt",
 			},
 			expectedCount: 1,
-			description:   "Should only find backup files, not other files",
+			update:        "Should only find backup files, not other files",
 		},
 	}
 
@@ -495,14 +495,14 @@ func TestLoadAllCompletedTodos(t *testing.T) {
 		mainTodos          []Todo
 		backupFiles        map[string][]Todo
 		expectedTotalCount int
-		description        string
+		update             string
 	}{
 		{
 			name:               "no todos anywhere",
 			mainTodos:          []Todo{},
 			backupFiles:        map[string][]Todo{},
 			expectedTotalCount: 0,
-			description:        "No todos should return empty slice",
+			update:             "No todos should return empty slice",
 		},
 		{
 			name: "only main file",
@@ -512,7 +512,7 @@ func TestLoadAllCompletedTodos(t *testing.T) {
 			},
 			backupFiles:        map[string][]Todo{},
 			expectedTotalCount: 2,
-			description:        "Should load only main file todos",
+			update:             "Should load only main file todos",
 		},
 		{
 			name:      "only backup files",
@@ -524,7 +524,7 @@ func TestLoadAllCompletedTodos(t *testing.T) {
 				},
 			},
 			expectedTotalCount: 2,
-			description:        "Should load only backup todos",
+			update:             "Should load only backup todos",
 		},
 		{
 			name: "main and backup files",
@@ -538,7 +538,7 @@ func TestLoadAllCompletedTodos(t *testing.T) {
 				},
 			},
 			expectedTotalCount: 3,
-			description:        "Should combine main and backup todos",
+			update:             "Should combine main and backup todos",
 		},
 		{
 			name: "multiple backup files",
@@ -555,7 +555,7 @@ func TestLoadAllCompletedTodos(t *testing.T) {
 				},
 			},
 			expectedTotalCount: 4,
-			description:        "Should combine all files",
+			update:             "Should combine all files",
 		},
 	}
 
@@ -628,14 +628,14 @@ func TestCreateBackups(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
-		name        string
-		setupFiles  map[string][]Todo
-		description string
+		name       string
+		setupFiles map[string][]Todo
+		update     string
 	}{
 		{
-			name:        "no existing files",
-			setupFiles:  map[string][]Todo{},
-			description: "Should create backup directory even with no files",
+			name:       "no existing files",
+			setupFiles: map[string][]Todo{},
+			update:     "Should create backup directory even with no files",
 		},
 		{
 			name: "all three files exist",
@@ -651,7 +651,7 @@ func TestCreateBackups(t *testing.T) {
 					{Text: "Completed task 1", CreatedAt: now},
 				},
 			},
-			description: "Should backup all three files",
+			update: "Should backup all three files",
 		},
 		{
 			name: "partial files exist",
@@ -660,7 +660,7 @@ func TestCreateBackups(t *testing.T) {
 					{Text: "Ready task 1", CreatedAt: now},
 				},
 			},
-			description: "Should backup only existing files",
+			update: "Should backup only existing files",
 		},
 	}
 

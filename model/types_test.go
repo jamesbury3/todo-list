@@ -8,76 +8,76 @@ import (
 
 func TestTodoUnmarshalJSON(t *testing.T) {
 	tests := []struct {
-		name                 string
-		jsonData             string
-		expectedText         string
-		expectedDescCount    int
-		expectedDescriptions []string
-		expectError          bool
-		description          string
+		name                string
+		jsonData            string
+		expectedText        string
+		expectedUpdateCount int
+		expectedUpdates     []string
+		expectError         bool
+		update              string
 	}{
 		{
-			name:                 "new format - description as array",
-			jsonData:             `{"text":"Task 1","description":["desc1","desc2"],"created_at":"2024-01-01T10:00:00Z"}`,
-			expectedText:         "Task 1",
-			expectedDescCount:    2,
-			expectedDescriptions: []string{"desc1", "desc2"},
-			expectError:          false,
-			description:          "New format with []string description",
+			name:                "new format - updates as array",
+			jsonData:            `{"text":"Task 1","updates":["desc1","desc2"],"created_at":"2024-01-01T10:00:00Z"}`,
+			expectedText:        "Task 1",
+			expectedUpdateCount: 2,
+			expectedUpdates:     []string{"desc1", "desc2"},
+			expectError:         false,
+			update:              "New format with []string updates",
 		},
 		{
-			name:                 "old format - description as string",
-			jsonData:             `{"text":"Task 2","description":"old desc","created_at":"2024-01-01T10:00:00Z"}`,
-			expectedText:         "Task 2",
-			expectedDescCount:    1,
-			expectedDescriptions: []string{"old desc"},
-			expectError:          false,
-			description:          "Old format with string description should convert to []string",
+			name:                "legacy description as string",
+			jsonData:            `{"text":"Task 2","description":"old desc","created_at":"2024-01-01T10:00:00Z"}`,
+			expectedText:        "Task 2",
+			expectedUpdateCount: 1,
+			expectedUpdates:     []string{"old desc"},
+			expectError:         false,
+			update:              "Legacy description string should convert to []string",
 		},
 		{
-			name:                 "empty description string",
-			jsonData:             `{"text":"Task 3","description":"","created_at":"2024-01-01T10:00:00Z"}`,
-			expectedText:         "Task 3",
-			expectedDescCount:    0,
-			expectedDescriptions: []string{},
-			expectError:          false,
-			description:          "Empty description string should result in nil slice",
+			name:                "empty update string",
+			jsonData:            `{"text":"Task 3","description":"","created_at":"2024-01-01T10:00:00Z"}`,
+			expectedText:        "Task 3",
+			expectedUpdateCount: 0,
+			expectedUpdates:     []string{},
+			expectError:         false,
+			update:              "Empty update string should result in nil slice",
 		},
 		{
-			name:                 "no description field",
-			jsonData:             `{"text":"Task 4","created_at":"2024-01-01T10:00:00Z"}`,
-			expectedText:         "Task 4",
-			expectedDescCount:    0,
-			expectedDescriptions: []string{},
-			expectError:          false,
-			description:          "Missing description field should be nil",
+			name:                "no updates field",
+			jsonData:            `{"text":"Task 4","created_at":"2024-01-01T10:00:00Z"}`,
+			expectedText:        "Task 4",
+			expectedUpdateCount: 0,
+			expectedUpdates:     []string{},
+			expectError:         false,
+			update:              "Missing updates field should be nil",
 		},
 		{
-			name:                 "empty description array",
-			jsonData:             `{"text":"Task 5","description":[],"created_at":"2024-01-01T10:00:00Z"}`,
-			expectedText:         "Task 5",
-			expectedDescCount:    0,
-			expectedDescriptions: []string{},
-			expectError:          false,
-			description:          "Empty description array",
+			name:                "empty updates array",
+			jsonData:            `{"text":"Task 5","updates":[],"created_at":"2024-01-01T10:00:00Z"}`,
+			expectedText:        "Task 5",
+			expectedUpdateCount: 0,
+			expectedUpdates:     []string{},
+			expectError:         false,
+			update:              "Empty updates array",
 		},
 		{
-			name:                 "single item description array",
-			jsonData:             `{"text":"Task 6","description":["only one"],"created_at":"2024-01-01T10:00:00Z"}`,
-			expectedText:         "Task 6",
-			expectedDescCount:    1,
-			expectedDescriptions: []string{"only one"},
-			expectError:          false,
-			description:          "Single item array",
+			name:                "single item updates array",
+			jsonData:            `{"text":"Task 6","updates":["only one"],"created_at":"2024-01-01T10:00:00Z"}`,
+			expectedText:        "Task 6",
+			expectedUpdateCount: 1,
+			expectedUpdates:     []string{"only one"},
+			expectError:         false,
+			update:              "Single item array",
 		},
 		{
-			name:                 "UTF-8 in description",
-			jsonData:             `{"text":"Task 7","description":["世界","🌍"],"created_at":"2024-01-01T10:00:00Z"}`,
-			expectedText:         "Task 7",
-			expectedDescCount:    2,
-			expectedDescriptions: []string{"世界", "🌍"},
-			expectError:          false,
-			description:          "UTF-8 characters in descriptions",
+			name:                "UTF-8 in updates",
+			jsonData:            `{"text":"Task 7","updates":["世界","🌍"],"created_at":"2024-01-01T10:00:00Z"}`,
+			expectedText:        "Task 7",
+			expectedUpdateCount: 2,
+			expectedUpdates:     []string{"世界", "🌍"},
+			expectError:         false,
+			update:              "UTF-8 characters in updates",
 		},
 	}
 
@@ -99,19 +99,19 @@ func TestTodoUnmarshalJSON(t *testing.T) {
 					t.Errorf("Text = %q, want %q", todo.Text, tt.expectedText)
 				}
 
-				// Verify description count
-				if len(todo.Description) != tt.expectedDescCount {
-					t.Errorf("Description count = %d, want %d", len(todo.Description), tt.expectedDescCount)
+				// Verify update count
+				if len(todo.Updates) != tt.expectedUpdateCount {
+					t.Errorf("Updates count = %d, want %d", len(todo.Updates), tt.expectedUpdateCount)
 				}
 
-				// Verify description content
-				for i, expectedDesc := range tt.expectedDescriptions {
-					if i >= len(todo.Description) {
-						t.Errorf("Missing description at index %d", i)
+				// Verify update content
+				for i, expectedUpdate := range tt.expectedUpdates {
+					if i >= len(todo.Updates) {
+						t.Errorf("Missing update at index %d", i)
 						continue
 					}
-					if todo.Description[i] != expectedDesc {
-						t.Errorf("Description[%d] = %q, want %q", i, todo.Description[i], expectedDesc)
+					if todo.Updates[i] != expectedUpdate {
+						t.Errorf("Updates[%d] = %q, want %q", i, todo.Updates[i], expectedUpdate)
 					}
 				}
 
@@ -155,26 +155,26 @@ func TestTodoMarshalJSON(t *testing.T) {
 		name        string
 		todo        Todo
 		checkFields []string
-		description string
+		update      string
 	}{
 		{
-			name: "todo with description array",
+			name: "todo with updates array",
 			todo: Todo{
-				Text:        "Task 1",
-				Description: []string{"desc1", "desc2"},
-				CreatedAt:   now,
+				Text:      "Task 1",
+				Updates:   []string{"desc1", "desc2"},
+				CreatedAt: now,
 			},
-			checkFields: []string{`"text":"Task 1"`, `"description"`, `"created_at"`},
-			description: "Should marshal description as array",
+			checkFields: []string{`"text":"Task 1"`, `"updates"`, `"created_at"`},
+			update:      "Should marshal updates as array",
 		},
 		{
-			name: "todo without description",
+			name: "todo without updates",
 			todo: Todo{
 				Text:      "Task 2",
 				CreatedAt: now,
 			},
 			checkFields: []string{`"text":"Task 2"`, `"created_at"`},
-			description: "Should omit empty description",
+			update:      "Should omit empty updates",
 		},
 		{
 			name: "completed todo",
@@ -184,7 +184,7 @@ func TestTodoMarshalJSON(t *testing.T) {
 				CompletedAt: &completedTime,
 			},
 			checkFields: []string{`"text":"Completed"`, `"completed_at"`},
-			description: "Should include completed_at",
+			update:      "Should include completed_at",
 		},
 	}
 
@@ -229,11 +229,11 @@ func TestTodoBackwardCompatibility(t *testing.T) {
 	}
 
 	// Verify conversion
-	if len(todo.Description) != 1 {
-		t.Errorf("Description should be converted to array with 1 element, got %d", len(todo.Description))
+	if len(todo.Updates) != 1 {
+		t.Errorf("Updates should be converted to array with 1 element, got %d", len(todo.Updates))
 	}
-	if len(todo.Description) > 0 && todo.Description[0] != "single string" {
-		t.Errorf("Description[0] = %q, want 'single string'", todo.Description[0])
+	if len(todo.Updates) > 0 && todo.Updates[0] != "single string" {
+		t.Errorf("Updates[0] = %q, want 'single string'", todo.Updates[0])
 	}
 
 	// Marshal back to JSON (should use new format)
@@ -244,7 +244,7 @@ func TestTodoBackwardCompatibility(t *testing.T) {
 
 	jsonStr := string(data)
 	// New format should have array
-	if !contains(jsonStr, `"description":["single string"]`) {
+	if !contains(jsonStr, `"updates":["single string"]`) {
 		t.Errorf("Marshaled JSON should use array format, got: %s", jsonStr)
 	}
 }

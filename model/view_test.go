@@ -11,7 +11,7 @@ func TestViewRendering(t *testing.T) {
 		currentView: viewBacklog,
 		backlog: []Todo{
 			{Text: "task1", CreatedAt: now},
-			{Text: "task2", Description: []string{"has description"}, CreatedAt: now},
+			{Text: "task2", Updates: []string{"has update"}, CreatedAt: now},
 		},
 		cursor: 0,
 	}
@@ -29,7 +29,7 @@ func TestViewRendering(t *testing.T) {
 		t.Error("View should contain 'task2'")
 	}
 	if !contains(view, "📄") {
-		t.Error("View should contain description indicator")
+		t.Error("View should contain update indicator")
 	}
 	if !contains(view, "Press ? for help") {
 		t.Error("View should contain help prompt")
@@ -84,81 +84,81 @@ func TestViewRenderingDeleteConfirmation(t *testing.T) {
 
 func TestWrapText(t *testing.T) {
 	tests := []struct {
-		name        string
-		text        string
-		maxWidth    int
-		expected    []string
-		description string
+		name     string
+		text     string
+		maxWidth int
+		expected []string
+		update   string
 	}{
 		{
-			name:        "text shorter than maxWidth",
-			text:        "short",
-			maxWidth:    10,
-			expected:    []string{"short"},
-			description: "Short text should return single line",
+			name:     "text shorter than maxWidth",
+			text:     "short",
+			maxWidth: 10,
+			expected: []string{"short"},
+			update:   "Short text should return single line",
 		},
 		{
-			name:        "text equal to maxWidth",
-			text:        "exactly10!",
-			maxWidth:    10,
-			expected:    []string{"exactly10!"},
-			description: "Text exactly at maxWidth should return single line",
+			name:     "text equal to maxWidth",
+			text:     "exactly10!",
+			maxWidth: 10,
+			expected: []string{"exactly10!"},
+			update:   "Text exactly at maxWidth should return single line",
 		},
 		{
-			name:        "text longer than maxWidth",
-			text:        "This is a longer text that needs wrapping",
-			maxWidth:    20,
-			expected:    []string{"This is a longer ", "text that needs ", "wrapping"},
-			description: "Long text should wrap at word boundaries",
+			name:     "text longer than maxWidth",
+			text:     "This is a longer text that needs wrapping",
+			maxWidth: 20,
+			expected: []string{"This is a longer ", "text that needs ", "wrapping"},
+			update:   "Long text should wrap at word boundaries",
 		},
 		{
-			name:        "multiple words wrapping",
-			text:        "one two three four five",
-			maxWidth:    10,
-			expected:    []string{"one two ", "three ", "four five"},
-			description: "Multiple words should wrap correctly",
+			name:     "multiple words wrapping",
+			text:     "one two three four five",
+			maxWidth: 10,
+			expected: []string{"one two ", "three ", "four five"},
+			update:   "Multiple words should wrap correctly",
 		},
 		{
-			name:        "long word exceeding maxWidth",
-			text:        "supercalifragilisticexpialidocious",
-			maxWidth:    10,
-			expected:    []string{"supercalifragilisticexpialidocious"},
-			description: "Single long word should not be split",
+			name:     "long word exceeding maxWidth",
+			text:     "supercalifragilisticexpialidocious",
+			maxWidth: 10,
+			expected: []string{"supercalifragilisticexpialidocious"},
+			update:   "Single long word should not be split",
 		},
 		{
-			name:        "empty string",
-			text:        "",
-			maxWidth:    10,
-			expected:    []string{""},
-			description: "Empty string should return single empty line",
+			name:     "empty string",
+			text:     "",
+			maxWidth: 10,
+			expected: []string{""},
+			update:   "Empty string should return single empty line",
 		},
 		{
-			name:        "maxWidth zero",
-			text:        "test",
-			maxWidth:    0,
-			expected:    []string{"test"},
-			description: "MaxWidth <= 0 should return single line",
+			name:     "maxWidth zero",
+			text:     "test",
+			maxWidth: 0,
+			expected: []string{"test"},
+			update:   "MaxWidth <= 0 should return single line",
 		},
 		{
-			name:        "maxWidth negative",
-			text:        "test",
-			maxWidth:    -5,
-			expected:    []string{"test"},
-			description: "Negative maxWidth should return single line",
+			name:     "maxWidth negative",
+			text:     "test",
+			maxWidth: -5,
+			expected: []string{"test"},
+			update:   "Negative maxWidth should return single line",
 		},
 		{
-			name:        "UTF-8 characters",
-			text:        "世界 你好 测试 文本",
-			maxWidth:    10,
-			expected:    []string{"世界 你好 测试 ", "文本"},
-			description: "UTF-8 characters should wrap correctly",
+			name:     "UTF-8 characters",
+			text:     "世界 你好 测试 文本",
+			maxWidth: 10,
+			expected: []string{"世界 你好 测试 ", "文本"},
+			update:   "UTF-8 characters should wrap correctly",
 		},
 		{
-			name:        "text with spaces",
-			text:        "a b c d e f g h",
-			maxWidth:    5,
-			expected:    []string{"a b ", "c d ", "e f ", "g h"},
-			description: "Words separated by spaces should wrap",
+			name:     "text with spaces",
+			text:     "a b c d e f g h",
+			maxWidth: 5,
+			expected: []string{"a b ", "c d ", "e f ", "g h"},
+			update:   "Words separated by spaces should wrap",
 		},
 	}
 
@@ -183,17 +183,17 @@ func TestWrapText(t *testing.T) {
 
 func TestRenderColoredTextWithCursor(t *testing.T) {
 	tests := []struct {
-		name        string
-		text        string
-		cursorPos   int
-		description string
-		checkFunc   func(t *testing.T, result string)
+		name      string
+		text      string
+		cursorPos int
+		update    string
+		checkFunc func(t *testing.T, result string)
 	}{
 		{
-			name:        "cursor at start",
-			text:        "hello",
-			cursorPos:   0,
-			description: "Cursor at position 0",
+			name:      "cursor at start",
+			text:      "hello",
+			cursorPos: 0,
+			update:    "Cursor at position 0",
 			checkFunc: func(t *testing.T, result string) {
 				if !contains(result, "hello") {
 					t.Error("Result should contain text")
@@ -201,10 +201,10 @@ func TestRenderColoredTextWithCursor(t *testing.T) {
 			},
 		},
 		{
-			name:        "cursor in middle",
-			text:        "hello",
-			cursorPos:   2,
-			description: "Cursor at position 2",
+			name:      "cursor in middle",
+			text:      "hello",
+			cursorPos: 2,
+			update:    "Cursor at position 2",
 			checkFunc: func(t *testing.T, result string) {
 				// Result contains styled text with ANSI codes, just verify it's not empty
 				if result == "" {
@@ -213,10 +213,10 @@ func TestRenderColoredTextWithCursor(t *testing.T) {
 			},
 		},
 		{
-			name:        "cursor at end",
-			text:        "hello",
-			cursorPos:   5,
-			description: "Cursor at end of text",
+			name:      "cursor at end",
+			text:      "hello",
+			cursorPos: 5,
+			update:    "Cursor at end of text",
 			checkFunc: func(t *testing.T, result string) {
 				if !contains(result, "hello") {
 					t.Error("Result should contain text")
@@ -224,10 +224,10 @@ func TestRenderColoredTextWithCursor(t *testing.T) {
 			},
 		},
 		{
-			name:        "cursor beyond text",
-			text:        "hi",
-			cursorPos:   10,
-			description: "Cursor position beyond text length",
+			name:      "cursor beyond text",
+			text:      "hi",
+			cursorPos: 10,
+			update:    "Cursor position beyond text length",
 			checkFunc: func(t *testing.T, result string) {
 				if !contains(result, "hi") {
 					t.Error("Result should contain text")
@@ -235,10 +235,10 @@ func TestRenderColoredTextWithCursor(t *testing.T) {
 			},
 		},
 		{
-			name:        "negative cursor",
-			text:        "test",
-			cursorPos:   -1,
-			description: "Negative cursor position",
+			name:      "negative cursor",
+			text:      "test",
+			cursorPos: -1,
+			update:    "Negative cursor position",
 			checkFunc: func(t *testing.T, result string) {
 				if !contains(result, "test") {
 					t.Error("Result should contain text")
@@ -246,10 +246,10 @@ func TestRenderColoredTextWithCursor(t *testing.T) {
 			},
 		},
 		{
-			name:        "empty text",
-			text:        "",
-			cursorPos:   0,
-			description: "Empty text with cursor",
+			name:      "empty text",
+			text:      "",
+			cursorPos: 0,
+			update:    "Empty text with cursor",
 			checkFunc: func(t *testing.T, result string) {
 				// Should just return cursor indicator
 				if result == "" {
@@ -258,10 +258,10 @@ func TestRenderColoredTextWithCursor(t *testing.T) {
 			},
 		},
 		{
-			name:        "UTF-8 characters",
-			text:        "世界",
-			cursorPos:   1,
-			description: "UTF-8 text with cursor",
+			name:      "UTF-8 characters",
+			text:      "世界",
+			cursorPos: 1,
+			update:    "UTF-8 text with cursor",
 			checkFunc: func(t *testing.T, result string) {
 				// Result contains styled text with ANSI codes, just verify it's not empty
 				if result == "" {
@@ -291,7 +291,7 @@ func TestRenderPrettifyView(t *testing.T) {
 		title        string
 		exitKey      string
 		wantContains []string
-		description  string
+		update       string
 	}{
 		{
 			name:    "empty todos",
@@ -303,7 +303,7 @@ func TestRenderPrettifyView(t *testing.T) {
 				"No completed todos",
 				"Press p to exit prettify view",
 			},
-			description: "Should show empty message",
+			update: "Should show empty message",
 		},
 		{
 			name: "single todo",
@@ -317,7 +317,7 @@ func TestRenderPrettifyView(t *testing.T) {
 				"Test task",
 				"Week of",
 			},
-			description: "Should display single todo",
+			update: "Should display single todo",
 		},
 		{
 			name: "multiple todos same day",
@@ -332,14 +332,14 @@ func TestRenderPrettifyView(t *testing.T) {
 				"Task 2",
 				"Week of",
 			},
-			description: "Should display multiple todos from same day",
+			update: "Should display multiple todos from same day",
 		},
 		{
-			name: "todos with descriptions",
+			name: "todos with updates",
 			todos: []Todo{
 				{
 					Text:        "Task with notes",
-					Description: []string{"Note 1", "Note 2"},
+					Updates:     []string{"Note 1", "Note 2"},
 					CreatedAt:   now,
 					CompletedAt: &completedNow,
 				},
@@ -351,7 +351,7 @@ func TestRenderPrettifyView(t *testing.T) {
 				"Note 1",
 				"Note 2",
 			},
-			description: "Should display descriptions",
+			update: "Should display updates",
 		},
 		{
 			name: "todos from different days",
@@ -366,7 +366,7 @@ func TestRenderPrettifyView(t *testing.T) {
 				"Yesterday task",
 				"Week of",
 			},
-			description: "Should group by day",
+			update: "Should group by day",
 		},
 	}
 
@@ -395,7 +395,7 @@ func TestRenderWrappedTextWithCursor(t *testing.T) {
 		cursorPos   int
 		maxWidth    int
 		expectedLen int
-		description string
+		update      string
 	}{
 		{
 			name:        "short text no wrapping",
@@ -403,7 +403,7 @@ func TestRenderWrappedTextWithCursor(t *testing.T) {
 			cursorPos:   2,
 			maxWidth:    10,
 			expectedLen: 1,
-			description: "Text shorter than maxWidth should return single line",
+			update:      "Text shorter than maxWidth should return single line",
 		},
 		{
 			name:        "long text with wrapping",
@@ -411,7 +411,7 @@ func TestRenderWrappedTextWithCursor(t *testing.T) {
 			cursorPos:   5,
 			maxWidth:    15,
 			expectedLen: 3,
-			description: "Long text should wrap to multiple lines",
+			update:      "Long text should wrap to multiple lines",
 		},
 		{
 			name:        "maxWidth zero",
@@ -419,7 +419,7 @@ func TestRenderWrappedTextWithCursor(t *testing.T) {
 			cursorPos:   2,
 			maxWidth:    0,
 			expectedLen: 1,
-			description: "MaxWidth <= 0 should return single line",
+			update:      "MaxWidth <= 0 should return single line",
 		},
 		{
 			name:        "cursor beyond text",
@@ -427,7 +427,7 @@ func TestRenderWrappedTextWithCursor(t *testing.T) {
 			cursorPos:   10,
 			maxWidth:    20,
 			expectedLen: 1,
-			description: "Cursor beyond text should be handled",
+			update:      "Cursor beyond text should be handled",
 		},
 		{
 			name:        "empty text",
@@ -435,7 +435,7 @@ func TestRenderWrappedTextWithCursor(t *testing.T) {
 			cursorPos:   0,
 			maxWidth:    10,
 			expectedLen: 1,
-			description: "Empty text should return cursor only",
+			update:      "Empty text should return cursor only",
 		},
 	}
 

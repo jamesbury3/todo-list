@@ -155,11 +155,11 @@ func TestUpdateCompletedTodo(t *testing.T) {
 
 	// Update the first todo
 	m.updateCompletedTodo(func(t *Todo) {
-		t.Description = []string{"updated description"}
+		t.Updates = []string{"updated update"}
 	})
 
-	if len(m.completed[0].Description) != 1 || m.completed[0].Description[0] != "updated description" {
-		t.Errorf("updateCompletedTodo() did not update description, got %v", m.completed[0].Description)
+	if len(m.completed[0].Updates) != 1 || m.completed[0].Updates[0] != "updated update" {
+		t.Errorf("updateCompletedTodo() did not update updates, got %v", m.completed[0].Updates)
 	}
 }
 
@@ -195,13 +195,13 @@ func TestCountCompletedToday(t *testing.T) {
 		name          string
 		completed     []Todo
 		expectedCount int
-		description   string
+		update        string
 	}{
 		{
 			name:          "no completed todos",
 			completed:     []Todo{},
 			expectedCount: 0,
-			description:   "Empty list should return 0",
+			update:        "Empty list should return 0",
 		},
 		{
 			name: "all completed today",
@@ -211,7 +211,7 @@ func TestCountCompletedToday(t *testing.T) {
 				{Text: "task3", CreatedAt: today, CompletedAt: &today},
 			},
 			expectedCount: 3,
-			description:   "All tasks completed today",
+			update:        "All tasks completed today",
 		},
 		{
 			name: "mixed today and yesterday",
@@ -221,7 +221,7 @@ func TestCountCompletedToday(t *testing.T) {
 				{Text: "today2", CreatedAt: today, CompletedAt: &today},
 			},
 			expectedCount: 2,
-			description:   "Should count only today's completions",
+			update:        "Should count only today's completions",
 		},
 		{
 			name: "none completed today",
@@ -230,7 +230,7 @@ func TestCountCompletedToday(t *testing.T) {
 				{Text: "2days", CreatedAt: twoDaysAgo, CompletedAt: &twoDaysAgo},
 			},
 			expectedCount: 0,
-			description:   "Old completions should not be counted",
+			update:        "Old completions should not be counted",
 		},
 		{
 			name: "todos with nil CompletedAt",
@@ -239,7 +239,7 @@ func TestCountCompletedToday(t *testing.T) {
 				{Text: "not completed", CreatedAt: today, CompletedAt: nil},
 			},
 			expectedCount: 1,
-			description:   "Nil CompletedAt should be ignored",
+			update:        "Nil CompletedAt should be ignored",
 		},
 		{
 			name: "timezone edge case - just before midnight",
@@ -247,7 +247,7 @@ func TestCountCompletedToday(t *testing.T) {
 				{Text: "late", CreatedAt: today, CompletedAt: &today},
 			},
 			expectedCount: 1,
-			description:   "Same day regardless of time",
+			update:        "Same day regardless of time",
 		},
 	}
 
@@ -444,27 +444,27 @@ func TestGroupTodosByWeek(t *testing.T) {
 	nextWeekSun := time.Date(2024, 1, 21, 10, 0, 0, 0, time.UTC)
 
 	tests := []struct {
-		name        string
-		todos       []Todo
-		wantWeeks   int
-		wantDays    int
-		description string
+		name      string
+		todos     []Todo
+		wantWeeks int
+		wantDays  int
+		update    string
 	}{
 		{
-			name:        "empty todos",
-			todos:       []Todo{},
-			wantWeeks:   0,
-			wantDays:    0,
-			description: "Should return empty slice",
+			name:      "empty todos",
+			todos:     []Todo{},
+			wantWeeks: 0,
+			wantDays:  0,
+			update:    "Should return empty slice",
 		},
 		{
 			name: "single todo",
 			todos: []Todo{
 				{Text: "task1", CreatedAt: sun, CompletedAt: &sun},
 			},
-			wantWeeks:   1,
-			wantDays:    1,
-			description: "Single todo should create one week, one day",
+			wantWeeks: 1,
+			wantDays:  1,
+			update:    "Single todo should create one week, one day",
 		},
 		{
 			name: "multiple todos same day",
@@ -472,9 +472,9 @@ func TestGroupTodosByWeek(t *testing.T) {
 				{Text: "task1", CreatedAt: sun, CompletedAt: &sun},
 				{Text: "task2", CreatedAt: sun, CompletedAt: &sun},
 			},
-			wantWeeks:   1,
-			wantDays:    1,
-			description: "Same day todos should be in same day group",
+			wantWeeks: 1,
+			wantDays:  1,
+			update:    "Same day todos should be in same day group",
 		},
 		{
 			name: "multiple todos same week",
@@ -483,9 +483,9 @@ func TestGroupTodosByWeek(t *testing.T) {
 				{Text: "monday", CreatedAt: mon, CompletedAt: &mon},
 				{Text: "tuesday", CreatedAt: tue, CompletedAt: &tue},
 			},
-			wantWeeks:   1,
-			wantDays:    3,
-			description: "Same week todos should be in same week with multiple days",
+			wantWeeks: 1,
+			wantDays:  3,
+			update:    "Same week todos should be in same week with multiple days",
 		},
 		{
 			name: "multiple weeks",
@@ -493,9 +493,9 @@ func TestGroupTodosByWeek(t *testing.T) {
 				{Text: "week1", CreatedAt: sun, CompletedAt: &sun},
 				{Text: "week2", CreatedAt: nextWeekSun, CompletedAt: &nextWeekSun},
 			},
-			wantWeeks:   2,
-			wantDays:    1, // Each week has 1 day
-			description: "Different weeks should create separate week groups",
+			wantWeeks: 2,
+			wantDays:  1, // Each week has 1 day
+			update:    "Different weeks should create separate week groups",
 		},
 		{
 			name: "todos with nil CompletedAt",
@@ -503,9 +503,9 @@ func TestGroupTodosByWeek(t *testing.T) {
 				{Text: "completed", CreatedAt: sun, CompletedAt: &sun},
 				{Text: "not completed", CreatedAt: mon, CompletedAt: nil},
 			},
-			wantWeeks:   1,
-			wantDays:    1,
-			description: "Nil CompletedAt should be skipped",
+			wantWeeks: 1,
+			wantDays:  1,
+			update:    "Nil CompletedAt should be skipped",
 		},
 	}
 
@@ -551,7 +551,7 @@ func TestGenerateMarkdownFromTodos(t *testing.T) {
 			},
 		},
 		{
-			name: "single todo without description",
+			name: "single todo without updates",
 			todos: []Todo{
 				{Text: "Test Task", CreatedAt: now, CompletedAt: &todo1},
 			},
@@ -562,13 +562,13 @@ func TestGenerateMarkdownFromTodos(t *testing.T) {
 			},
 		},
 		{
-			name: "todo with description",
+			name: "todo with updates",
 			todos: []Todo{
 				{
 					Text:        "Task with notes",
 					CreatedAt:   now,
 					CompletedAt: &todo1,
-					Description: []string{"Note 1", "Note 2"},
+					Updates:     []string{"Note 1", "Note 2"},
 				},
 			},
 			wantContains: []string{

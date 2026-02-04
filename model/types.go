@@ -21,15 +21,16 @@ const (
 
 type Todo struct {
 	Text        string     `json:"text"`
-	Description []string   `json:"description,omitempty"`
+	Updates     []string   `json:"updates,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
-// UnmarshalJSON provides backward compatibility for loading old single-string descriptions
+// UnmarshalJSON provides backward compatibility for loading old single-string descriptions.
 func (t *Todo) UnmarshalJSON(data []byte) error {
 	type Alias Todo
 	aux := &struct {
+		Updates     interface{} `json:"updates,omitempty"`
 		Description interface{} `json:"description,omitempty"`
 		*Alias
 	}{
@@ -40,18 +41,31 @@ func (t *Todo) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// Handle description field - can be string (old format) or []string (new format)
-	switch desc := aux.Description.(type) {
-	case string:
-		if desc != "" {
-			t.Description = []string{desc}
-		}
-	case []interface{}:
-		for _, v := range desc {
-			if s, ok := v.(string); ok {
-				t.Description = append(t.Description, s)
+	parseUpdates := func(raw interface{}) []string {
+		var updates []string
+		switch value := raw.(type) {
+		case string:
+			if value != "" {
+				updates = []string{value}
 			}
+		case []interface{}:
+			for _, v := range value {
+				if s, ok := v.(string); ok {
+					updates = append(updates, s)
+				}
+			}
+		case []string:
+			updates = append(updates, value...)
 		}
+		return updates
+	}
+
+	// Handle updates field - can be string (old format) or []string (new format).
+	if aux.Updates != nil {
+		t.Updates = parseUpdates(aux.Updates)
+	} else if aux.Description != nil {
+		// Legacy "description" field support.
+		t.Updates = parseUpdates(aux.Description)
 	}
 
 	return nil
@@ -65,18 +79,19 @@ type Model struct {
 	cursor                 int
 	currentView            view
 	adding                 bool
+	addingToTop            bool // True when adding to top with 'A'
 	newTodo                string
-	editingDescription     bool
-	newDescription         string
+	editingUpdate          bool
+	newUpdate              string
 	renamingTodo           bool
 	newTodoName            string
-	showingDescription     bool
-	showingAllDescriptions bool
+	showingUpdate          bool
+	showingAllUpdates      bool
 	showingCommands        bool
 	confirmingDelete       bool
-	navigatingDescriptions bool // True when in description navigation mode
-	descriptionCursor      int  // Which description is selected (0-indexed)
-	confirmingDeleteDesc   bool // True when confirming description deletion
+	navigatingUpdates      bool // True when in update navigation mode
+	updateCursor           int  // Which update is selected (0-indexed)
+	confirmingDeleteUpdate bool // True when confirming update deletion
 	showingPrettify        bool // True when in prettify view (Completed tab only)
 	saveError              string
 	message                string

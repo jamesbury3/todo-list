@@ -12,7 +12,7 @@ var (
 	cursorStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("81")).Bold(true)
 	todoTextStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
 	timestampStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
-	descriptionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Italic(true)
+	updateStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Italic(true)
 
 	// Headers and sections
 	headerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("75")).Bold(true)

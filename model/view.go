@@ -176,16 +176,16 @@ func (m Model) renderPrettifyView(todos []Todo, title string, exitKey string) st
 				}
 
 				// Always show all updates in prettify view
-				if len(todo.Description) > 0 {
-					for _, desc := range todo.Description {
+				if len(todo.Updates) > 0 {
+					for _, updateText := range todo.Updates {
 						// Wrap update text
-						descLines := wrapText(desc, maxTextWidth-5)
+						updateLines := wrapText(updateText, maxTextWidth-5)
 
-						for j, descLine := range descLines {
+						for j, updateLine := range updateLines {
 							if j == 0 {
-								s.WriteString("        " + descriptionStyle.Render("└─ "+descLine) + "\n")
+								s.WriteString("        " + updateStyle.Render("└─ "+updateLine) + "\n")
 							} else {
-								s.WriteString("        " + descriptionStyle.Render("   "+descLine) + "\n")
+								s.WriteString("        " + updateStyle.Render("   "+updateLine) + "\n")
 							}
 						}
 					}
@@ -259,8 +259,8 @@ func (m Model) View() string {
 
 			// Add update indicator
 			indicator := ""
-			if len(todo.Description) > 0 {
-				indicator = fmt.Sprintf(" 📄×%d", len(todo.Description))
+			if len(todo.Updates) > 0 {
+				indicator = fmt.Sprintf(" 📄×%d", len(todo.Updates))
 			}
 
 			// Wrap todo text if needed
@@ -299,24 +299,24 @@ func (m Model) View() string {
 			}
 
 			// Show updates if toggled and cursor is on this todo, or if showing all updates
-			if len(todo.Description) > 0 && ((m.showingDescription && i == m.cursor) || m.showingAllDescriptions) {
-				for descIdx, desc := range todo.Description {
+			if len(todo.Updates) > 0 && ((m.showingUpdate && i == m.cursor) || m.showingAllUpdates) {
+				for updateIdx, updateText := range todo.Updates {
 					// Wrap update text
-					descLines := wrapText(desc, maxTextWidth-5)
+					updateLines := wrapText(updateText, maxTextWidth-5)
 
 					// Add cursor indicator if in navigation mode
-					descCursor := ""
-					if m.navigatingDescriptions && i == m.cursor && descIdx == m.descriptionCursor {
-						descCursor = cursorStyle.Render("►") + " "
+					updateCursorIndicator := ""
+					if m.navigatingUpdates && i == m.cursor && updateIdx == m.updateCursor {
+						updateCursorIndicator = cursorStyle.Render("►") + " "
 					} else {
-						descCursor = "  "
+						updateCursorIndicator = "  "
 					}
 
-					for j, descLine := range descLines {
+					for j, updateLine := range updateLines {
 						if j == 0 {
-							s.WriteString("     " + descCursor + descriptionStyle.Render("└─ "+descLine) + "\n")
+							s.WriteString("     " + updateCursorIndicator + updateStyle.Render("└─ "+updateLine) + "\n")
 						} else {
-							s.WriteString("     " + "   " + descriptionStyle.Render("   "+descLine) + "\n")
+							s.WriteString("     " + "   " + updateStyle.Render("   "+updateLine) + "\n")
 						}
 					}
 				}
@@ -335,10 +335,10 @@ func (m Model) View() string {
 			s.WriteString("                " + wrappedLines[i] + "\n")
 		}
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
-	} else if m.editingDescription {
+	} else if m.editingUpdate {
 		// Wrap input text display if too wide
 		inputMaxWidth := maxTextWidth + 10
-		wrappedLines := renderWrappedTextWithCursor(m.newDescription, m.textInputCursor, inputMaxWidth)
+		wrappedLines := renderWrappedTextWithCursor(m.newUpdate, m.textInputCursor, inputMaxWidth)
 		s.WriteString("  " + promptStyle.Render("Edit update:") + " " + wrappedLines[0] + "\n")
 		for i := 1; i < len(wrappedLines); i++ {
 			s.WriteString("                   " + wrappedLines[i] + "\n")
@@ -355,7 +355,7 @@ func (m Model) View() string {
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.confirmingDelete {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this todo? (y/n)") + "\n\n")
-	} else if m.confirmingDeleteDesc {
+	} else if m.confirmingDeleteUpdate {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this update? (y/n)") + "\n\n")
 	} else if m.showingCommands {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
@@ -363,9 +363,9 @@ func (m Model) View() string {
 		if m.currentView == viewCompleted {
 			s.WriteString("  " + commandStyle.Render("d: delete  r: move back to ready  p: prettify view  P: export markdown  B: backup and clear") + "\n")
 		} else if m.currentView == viewReady {
-			s.WriteString("  " + commandStyle.Render("a: add  d: delete  x: mark complete  b: move to backlog") + "\n")
+			s.WriteString("  " + commandStyle.Render("a: add  A: add to top  d: delete  x: mark complete  b: move to backlog") + "\n")
 		} else if m.currentView == viewBacklog {
-			s.WriteString("  " + commandStyle.Render("a: add  d: delete  r: move to ready") + "\n")
+			s.WriteString("  " + commandStyle.Render("a: add  A: add to top  d: delete  r: move to ready") + "\n")
 		} else {
 			log.Fatalf("Invalid view: %v", m.currentView)
 		}
