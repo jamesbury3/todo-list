@@ -175,6 +175,18 @@ func (m Model) renderPrettifyView(todos []Todo, title string, exitKey string) st
 					}
 				}
 
+				// Show complete note first if present
+				if todo.CompleteNote != "" {
+					noteLines := wrapText(todo.CompleteNote, maxTextWidth-5)
+					for j, noteLine := range noteLines {
+						if j == 0 {
+							s.WriteString("        " + completeNoteStyle.Render("✓ "+noteLine) + "\n")
+						} else {
+							s.WriteString("        " + completeNoteStyle.Render("  "+noteLine) + "\n")
+						}
+					}
+				}
+
 				// Always show all updates in prettify view
 				if len(todo.Updates) > 0 {
 					for _, updateText := range todo.Updates {
@@ -257,10 +269,13 @@ func (m Model) View() string {
 				cursor = cursorStyle.Render(">")
 			}
 
-			// Add update indicator
+			// Add update and complete note indicator
 			indicator := ""
+			if todo.CompleteNote != "" {
+				indicator = " ✓"
+			}
 			if len(todo.Updates) > 0 {
-				indicator = fmt.Sprintf(" 📄×%d", len(todo.Updates))
+				indicator += fmt.Sprintf(" 📄×%d", len(todo.Updates))
 			}
 
 			// Wrap todo text if needed
@@ -298,8 +313,25 @@ func (m Model) View() string {
 				}
 			}
 
+			// Show complete note and updates if toggled
+			shouldShowDetails := (m.showingUpdate && i == m.cursor) || m.showingAllUpdates
+			hasCompleteNote := todo.CompleteNote != ""
+			hasUpdates := len(todo.Updates) > 0
+
+			// Show complete note at top if it exists
+			if hasCompleteNote && shouldShowDetails {
+				noteLines := wrapText(todo.CompleteNote, maxTextWidth-5)
+				for j, noteLine := range noteLines {
+					if j == 0 {
+						s.WriteString("     " + "  " + completeNoteStyle.Render("✓ "+noteLine) + "\n")
+					} else {
+						s.WriteString("     " + "  " + completeNoteStyle.Render("  "+noteLine) + "\n")
+					}
+				}
+			}
+
 			// Show updates if toggled and cursor is on this todo, or if showing all updates
-			if len(todo.Updates) > 0 && ((m.showingUpdate && i == m.cursor) || m.showingAllUpdates) {
+			if hasUpdates && shouldShowDetails {
 				for updateIdx, updateText := range todo.Updates {
 					// Wrap update text
 					updateLines := wrapText(updateText, maxTextWidth-5)
@@ -344,6 +376,15 @@ func (m Model) View() string {
 			s.WriteString("                   " + wrappedLines[i] + "\n")
 		}
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
+	} else if m.editingCompleteNote {
+		// Wrap input text display if too wide
+		inputMaxWidth := maxTextWidth + 10
+		wrappedLines := renderWrappedTextWithCursor(m.newCompleteNote, m.textInputCursor, inputMaxWidth)
+		s.WriteString("  " + promptStyle.Render("Complete note:") + " " + wrappedLines[0] + "\n")
+		for i := 1; i < len(wrappedLines); i++ {
+			s.WriteString("                   " + wrappedLines[i] + "\n")
+		}
+		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, clear to remove)") + "\n\n")
 	} else if m.renamingTodo {
 		// Wrap input text display if too wide
 		inputMaxWidth := maxTextWidth + 10
@@ -369,7 +410,7 @@ func (m Model) View() string {
 		} else {
 			log.Fatalf("Invalid view: %v", m.currentView)
 		}
-		s.WriteString("  " + commandStyle.Render("i: toggle updates  I: toggle all updates  u: add update  enter: navigate updates  n: rename todo / edit update  ?: toggle help  q: quit") + "\n\n")
+		s.WriteString("  " + commandStyle.Render("i: toggle updates  I: toggle all updates  u: add update  c: complete note  enter: navigate updates  n: rename todo / edit update  ?: toggle help  q: quit") + "\n\n")
 	} else {
 		s.WriteString("  " + helpTextStyle.Render("Press ? for help") + "\n\n")
 	}

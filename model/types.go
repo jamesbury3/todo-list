@@ -20,10 +20,11 @@ const (
 )
 
 type Todo struct {
-	Text        string     `json:"text"`
-	Updates     []string   `json:"updates,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	Text         string     `json:"text"`
+	CompleteNote string     `json:"complete_note,omitempty"`
+	Updates      []string   `json:"updates,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	CompletedAt  *time.Time `json:"completed_at,omitempty"`
 }
 
 // UnmarshalJSON provides backward compatibility for loading old single-string descriptions.
@@ -83,6 +84,8 @@ type Model struct {
 	newTodo                string
 	editingUpdate          bool
 	newUpdate              string
+	editingCompleteNote    bool   // True when editing a complete note
+	newCompleteNote        string // Buffer for complete note editing
 	renamingTodo           bool
 	newTodoName            string
 	showingUpdate          bool

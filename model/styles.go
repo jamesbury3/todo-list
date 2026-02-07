@@ -9,10 +9,11 @@ var (
 	inactiveTabStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Padding(0, 1)
 
 	// Cursor and items
-	cursorStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("81")).Bold(true)
-	todoTextStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
-	timestampStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
-	updateStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Italic(true)
+	cursorStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("81")).Bold(true)
+	todoTextStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
+	timestampStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+	updateStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Italic(true)
+	completeNoteStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Bold(true)
 
 	// Headers and sections
 	headerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("75")).Bold(true)

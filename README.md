@@ -24,6 +24,7 @@ The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of thes
 - `h`/`l` - Switch between views
 - `d` - Delete todo
 - `u` - Add update
+- `c` - Add/edit complete note (one per todo, shown at top of updates)
 - `n` - Rename todo / edit update
 - `i` - Toggle updates
 - `I` - Toggle all updates

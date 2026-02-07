@@ -121,6 +121,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		if m.editingCompleteNote {
+			switch msg.String() {
+			case "enter":
+				currentList := m.getCurrentList()
+				if len(currentList) > 0 && m.cursor < len(currentList) {
+					trimmedNote := strings.TrimSpace(m.newCompleteNote)
+					switch m.currentView {
+					case viewBacklog:
+						m.backlog[m.cursor].CompleteNote = trimmedNote
+						if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+							return m, cmd
+						}
+					case viewReady:
+						m.ready[m.cursor].CompleteNote = trimmedNote
+						if cmd := m.save(readyFile, m.ready); cmd != nil {
+							return m, cmd
+						}
+					case viewCompleted:
+						m.updateCompletedTodo(func(t *Todo) {
+							t.CompleteNote = trimmedNote
+						})
+						if cmd := m.save(completedFile, m.completed); cmd != nil {
+							return m, cmd
+						}
+					}
+					if trimmedNote == "" {
+						m.message = "Complete note removed"
+					} else {
+						m.message = "Complete note saved!"
+					}
+					m.showingUpdate = true
+				}
+				m.editingCompleteNote = false
+				m.newCompleteNote = ""
+			case "esc":
+				m.editingCompleteNote = false
+				m.newCompleteNote = ""
+				m.message = "Cancelled"
+			default:
+				handleTextInput(msg.String(), &m.newCompleteNote, &m.textInputCursor)
+			}
+			return m, nil
+		}
+
 		if m.renamingTodo {
 			switch msg.String() {
 			case "enter":
@@ -620,6 +664,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editingUpdate = true
 				m.newUpdate = ""
 				m.textInputCursor = 0
+				m.message = ""
+			}
+
+		case "c":
+			currentList := m.getCurrentList()
+			if len(currentList) > 0 && m.cursor < len(currentList) {
+				m.editingCompleteNote = true
+				m.newCompleteNote = currentList[m.cursor].CompleteNote
+				m.textInputCursor = len([]rune(m.newCompleteNote))
 				m.message = ""
 			}
 

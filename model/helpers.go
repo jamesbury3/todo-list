@@ -280,6 +280,11 @@ func generateMarkdownFromTodos(todos []Todo, includeBackups bool) string {
 				// Todo item
 				sb.WriteString(fmt.Sprintf("- **%s** _%s_\n", todo.Text, timeStr))
 
+				// Complete note (shown first)
+				if todo.CompleteNote != "" {
+					sb.WriteString(fmt.Sprintf("  - ✓ %s\n", todo.CompleteNote))
+				}
+
 				// Updates
 				if len(todo.Updates) > 0 {
 					for _, update := range todo.Updates {
